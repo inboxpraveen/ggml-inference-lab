@@ -1,0 +1,96 @@
+            <h2>Which CPU DLL you're running</h2>
+            <p>
+                Unzip the Windows CPU release and you'll find fourteen files named <code>ggml-cpu-*.dll</code>:
+                x64, sse42, sandybridge, ivybridge, haswell, skylakex, cannonlake, icelake, cascadelake,
+                cooperlake, sapphirerapids, alderlake, zen4 and piledriver. Each one is the same CPU backend
+                compiled with a different set of instruction-set flags. Only one gets loaded. The question I
+                had was how it decides, whether it decides well, and what happens when it doesn't.
+            </p>
+            <p>
+                The mechanism lives in <code>ggml-backend-reg.cpp</code>. At start-up, ggml scans the executable's
+                folder for backend libraries, and for each CPU variant it calls an exported
+                <code>ggml_backend_score()</code> function. The score is computed in
+                <code>cpu-feats-x86.cpp</code> from CPUID: every feature the variant was built with is a
+                required bit, and if the running CPU lacks any of them the score is zero. Among the survivors,
+                more features means a higher score, and the highest score wins. On the i7-14650HX that's
+                <code>alderlake</code>, the only variant that pairs AVX2 and FMA with AVX-VNNI; <code>haswell</code>
+                is the runner-up and the seven AVX-512 variants score zero because the chip doesn't have it.
+                You can see the decision in the first line of any tool's output:
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">What loads on this CPU</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code>load_backend: loaded CPU backend from ...\bin\cpu\ggml-cpu-alderlake.dll</code></pre>
+            </div>
+
+            <p>
+                There is no flag or environment variable to force a variant. <code>GGML_BACKEND_PATH</code>
+                exists, but it registers an additional backend after auto-selection rather than replacing it.
+                What does work is the crude thing: a folder containing the executables, <code>ggml.dll</code>,
+                <code>ggml-base.dll</code>, <code>llama.dll</code> and exactly one <code>ggml-cpu-*.dll</code>.
+                With one candidate, the highest score is that one. So I made fourteen folders and ran the same
+                benchmark in each, with Q8_0 and Q4_K_M, because the two families use different code paths.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/dll-variants.svg" alt="Horizontal bar chart of decode speed for Qwen3-0.6B at Q8_0 and Q4_K_M under each ggml-cpu DLL variant that loads on the i7-14650HX. alderlake and haswell lead; sandybridge, ivybridge and sse42 trail; x64 is slowest. The seven AVX-512 variants refuse to load." loading="lazy" decoding="async">
+                <figcaption>Every variant that can load on this CPU, forced one at a time. Anything with AVX-512 in its name simply does not run here.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>DLL variant</th>
+                            <th>Instruction set it assumes</th>
+                            <th>Q8_0 pp256</th>
+                            <th>Q8_0 tg128</th>
+                            <th>Q4_K_M pp256</th>
+                            <th>Q4_K_M tg128</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{DLL_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Seven of the fourteen refuse to load, with a clear <code>CPU backend is not loaded</code> error: every
+                variant that assumes AVX-512. Of the seven that run, look at the Q8_0 decode column first. It
+                barely moves. From the plain x64 build with no vector extensions beyond SSE2 to the alderlake
+                build, decode goes from 34 to 40 tok/s, because Q8_0 decode is waiting on memory whichever
+                kernel does the multiply. Now look at Q4_K_M. On alderlake and haswell it's 58 tok/s, the
+                fastest decode in this post on the CPU. On sandybridge and ivybridge, which have AVX but not
+                AVX2, it drops to 51. On sse42 and x64 it collapses to 23 tok/s, slower than Q8_0 on the same
+                DLL. Unpacking K-quant blocks is real arithmetic, and without 256-bit integer instructions
+                that arithmetic becomes the bottleneck instead of the memory bus. Prompt processing tells the
+                same story more loudly: Q4_K_M goes from 307 tok/s on alderlake to 41 on x64, a factor of
+                seven. The alderlake versus haswell difference, which is AVX-VNNI, was within noise on both
+                quants.
+            </p>
+            <p>
+                The instruction that separates alderlake from haswell is <code>vpdpbusd</code>, the AVX-VNNI
+                dot product of unsigned and signed bytes. In ggml's x86 kernels it's reached through the
+                shared int8 helpers that the Q8_0, Q4_0, Q4_1, Q5_0, Q5_1 and IQ4_NL dot products call. The
+                K-quant kernels, Q4_K through Q6_K, don't go through those helpers; they use the older
+                <code>maddubs</code> and <code>madd</code> pair with per-sub-block scales. So on paper VNNI can
+                only ever help the "0" family. In practice, on this model, it didn't help either family
+                measurably: Q8_0 prompt processing was 154 tok/s on alderlake and 151 on haswell, well inside
+                the run-to-run spread. The dot product isn't where a 0.6B model spends its prompt time. What
+                the variant really buys you is the jump from 128-bit to 256-bit integer math, and that jump
+                is worth a factor of two to seven depending on the quant.
+            </p>
+            <p>
+                What this means for choosing a build: the auto-selection is right, and you shouldn't fight
+                it. The cases where you need to know about the variants are the two failure modes. If you
+                copy the binaries to a server and only bring one DLL, you've silently chosen the variant,
+                and if it's the wrong one you'll get either a slow build or no CPU backend at all (a lone
+                unsupported DLL doesn't fall back to anything). And if you're on a CPU family the release
+                doesn't have a variant for, you get the nearest lower one, which is fine on decode and costs
+                you something on prompt processing. The table at the end of this post maps common CPUs to the
+                variant they'll get.
+            </p>

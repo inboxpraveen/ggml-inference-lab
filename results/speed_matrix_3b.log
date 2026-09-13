@@ -1,0 +1,18 @@
+### tensor placement: head on CPU, FFN on CPU
+| qwen3 0.6B Q8_0              | pp512 t=8 ngl=99 ot=token_embd=CPU             |    633 MB | 18055.16 +- 1171.64 |
+| qwen3 0.6B Q8_0              | tg128 t=8 ngl=99 ot=token_embd=CPU             |    633 MB |   160.37 +-   2.29 |
+<string>:7: SyntaxWarning: invalid escape sequence '\.'
+| qwen3 0.6B Q8_0              | pp512 t=8 ngl=99 ot=blk\.([0-7])\.ffn_.*=CPU   |    633 MB | 13508.56 +- 827.19 |
+| qwen3 0.6B Q8_0              | tg128 t=8 ngl=99 ot=blk\.([0-7])\.ffn_.*=CPU   |    633 MB |   194.47 +-   1.90 |
+| qwen3 0.6B Q8_0              | pp512 t=8 ngl=99                               |    633 MB | 11169.07 +- 731.88 |
+| qwen3 0.6B Q8_0              | tg128 t=8 ngl=99                               |    633 MB |   116.18 +-   2.62 |
+### CPU threads for prompt vs decode
+| qwen3 0.6B Q8_0              | pp512 t=8 mask=0x5555                          |    633 MB |   285.97 +-   7.39 |
+| qwen3 0.6B Q8_0              | tg128 t=8 mask=0x5555                          |    633 MB |    55.96 +-   0.54 |
+| qwen3 0.6B Q8_0              | pp512 t=8 mask=0xFFFF                          |    633 MB |   221.88 +-   1.65 |
+| qwen3 0.6B Q8_0              | tg128 t=8 mask=0xFFFF                          |    633 MB |    56.44 +-   0.16 |
+| qwen3 0.6B Q8_0              | pp512 t=16 mask=0x5555                         |    633 MB |   339.73 +-   5.66 |
+| qwen3 0.6B Q8_0              | tg128 t=16 mask=0x5555                         |    633 MB |    29.95 +-   7.94 |
+| qwen3 0.6B Q8_0              | pp512 t=16 mask=0xFFFF                         |    633 MB |   197.83 +-   7.49 |
+| qwen3 0.6B Q8_0              | tg128 t=16 mask=0xFFFF                         |    633 MB |    27.54 +-   2.13 |
+### PART3B DONE

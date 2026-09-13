@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting the most tokens per second out of one laptop with llama.cpp | Praveen Kumar</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="One Q8_0 model, one laptop, every knob llama.cpp exposes. Thread pinning on hybrid cores, CPU backend DLLs, per-tensor quantization of the tied LM head, GPU offload splits, KV cache types and self-speculative decoding, each measured for speed and for accuracy against BF16.">
+    <meta name="keywords" content="llama.cpp, GGUF, Q8_0, Quantization, KL Divergence, Perplexity, Memory Bandwidth, Speculative Decoding, CUDA, RTX 5060, Intel Hybrid CPU, Qwen3, Inference Engineering, cffi">
+    <meta name="author" content="Praveen Kumar">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Getting the most tokens per second out of one laptop with llama.cpp">
+    <meta property="og:description" content="Every knob llama.cpp exposes, measured on real hardware for speed and for accuracy. What moved the needle, what did not, and how to choose for your own machine.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://inboxpraveen.github.io/blogs/blog-1.html">
+    <meta property="og:image" content="https://inboxpraveen.github.io/blogs/resources/blog-1/Header.png">
+    <meta property="og:image:alt" content="Decode speed of Qwen3-0.6B on one laptop, from the stock llama.cpp defaults to the tuned configuration">
+    <meta property="og:site_name" content="Praveen Kumar Portfolio">
+    <meta property="article:published_time" content="2026-09-14">
+    <meta property="article:author" content="Praveen Kumar">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Getting the most tokens per second out of one laptop with llama.cpp">
+    <meta name="twitter:description" content="Thread pinning, CPU DLLs, per-tensor quantization of the LM head, GPU splits, KV cache types, speculative decoding. Measured, with accuracy numbers.">
+    <meta name="twitter:image" content="https://inboxpraveen.github.io/blogs/resources/blog-1/Header.png">
+    <meta name="twitter:image:alt" content="Decode speed of Qwen3-0.6B on one laptop, from the stock llama.cpp defaults to the tuned configuration">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://inboxpraveen.github.io/blogs/blog-1.html">
+
+    <link rel="icon" type="image/x-icon" href="../assests/favicon.ico">
+    <link rel="stylesheet" href="../index.css">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": "Getting the most tokens per second out of one laptop with llama.cpp",
+      "description": "One Q8_0 model, one laptop, every knob llama.cpp exposes, each measured for speed and for accuracy against the BF16 reference.",
+      "datePublished": "2026-09-14",
+      "dateModified": "2026-09-14",
+      "author": { "@type": "Person", "name": "Praveen Kumar", "url": "https://inboxpraveen.github.io/" },
+      "image": "https://inboxpraveen.github.io/blogs/resources/blog-1/Header.png",
+      "url": "https://inboxpraveen.github.io/blogs/blog-1.html",
+      "keywords": ["llama.cpp", "GGUF", "quantization", "KL divergence", "speculative decoding", "CUDA", "inference engineering"]
+    }
+    </script>
+</head>
+<body>
+
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" data-progress></div></div>
+
+    <!-- Navigation -->
+    <nav class="site-nav">
+        <div class="nav-container">
+            <a href="../index.html" class="logo" aria-label="Praveen Kumar, home">PK</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../all-projects.html">Projects</a></li>
+                <li><a href="../all-blogs.html" aria-current="page">Blogs</a></li>
+                <li><a href="../about.html">About</a></li>
+                <li><a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            </ul>
+            <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks">
+                <span class="bars"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Blog post 1 -->
+    <main id="main" class="page-container active">
+        <div class="page-header">
+            <div class="container">
+                <a href="../all-blogs.html" class="back-button">&larr; Back to Blog</a>
+                <h1 class="page-title">Getting the most tokens per second out of one laptop with llama.cpp</h1>
+                <div class="page-meta">
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>
+                        <span>Published: 14 September 2026</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg></span>
+                        <span data-read-time>{{READ_TIME}} min read</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                        <span>llama.cpp b10941 &bull; Qwen3-0.6B Q8_0</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-tag"></use></svg></span>
+                        <span>Inference engineering &bull; Quantization &bull; CUDA &bull; Python</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="toc" data-toc aria-label="On this page">
+            <p class="toc-label">On this page</p>
+        </nav>
+
+        <div class="content-section">
+{{BODY}}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <p class="footer-note">
+                    &copy; <span data-year>2026</span> Praveen Kumar &middot;
+                    Static HTML, one stylesheet, no build step &mdash;
+                    <a href="https://github.com/inboxpraveen/inboxpraveen.github.io" target="_blank" rel="noopener noreferrer">source on GitHub</a>
+                </p>
+                <div class="footer-social">
+                    <a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                        <svg class="icon" aria-hidden="true"><use href="#i-github"></use></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/in/praveen-kumar-inbox/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-linkedin"></use></svg>
+                    </a>
+                    <a href="https://x.com/InboxPraveen" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                    </a>
+                    <a href="mailto:inboxpraveen.17@gmail.com" aria-label="Email">
+                        <svg class="icon" aria-hidden="true"><use href="#i-mail"></use></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <button class="back-to-top" type="button" data-back-to-top aria-label="Back to top">
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-up"></use></svg>
+    </button>
+
+    <script src="../site.js" defer></script>
+
+</body>
+</html>

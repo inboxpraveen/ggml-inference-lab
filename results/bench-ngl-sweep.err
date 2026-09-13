@@ -1,0 +1,5 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8123 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8123 MiB
+load_backend: loaded CUDA backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cpu-alderlake.dll

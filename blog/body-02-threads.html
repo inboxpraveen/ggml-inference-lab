@@ -1,0 +1,152 @@
+            <h2>Baseline: what you get out of the box</h2>
+            <p>
+                Before touching anything, I ran <code>llama-bench</code> exactly the way most people would:
+                the model, the prebuilt binary, no flags. Prompt processing at 512 tokens, generation at 128,
+                five repetitions, the process at high priority so the OS doesn't preempt it for the browser.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">Baseline commands</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code>bin\cpu\llama-bench.exe  -m Qwen3-0.6B-Q8_0.gguf -p 512 -n 128 -r 5 --prio 2 -ngl 0
+bin\cuda\llama-bench.exe -m Qwen3-0.6B-Q8_0.gguf -p 512 -n 128 -r 5 --prio 2</code></pre>
+            </div>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Backend</th>
+                            <th>Threads</th>
+                            <th>pp512 (tok/s)</th>
+                            <th>tg128 (tok/s)</th>
+                            <th>Share of the bandwidth ceiling</th>
+                            <th>Condition</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>CPU, defaults</td><td>16 (auto)</td><td>{{BASE_CPU_PP}}</td><td>{{BASE_CPU_TG}}</td><td>{{BASE_CPU_TG_PCT}}% of 70.7</td><td>working load</td></tr>
+                        <tr><td>CUDA, defaults</td><td>all layers on GPU</td><td>{{BASE_CUDA_PP}}</td><td>{{BASE_CUDA_TG}}</td><td>{{BASE_CUDA_TG_PCT}}% of 606</td><td>working load</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Two things jump out. The CPU is at {{BASE_CPU_TG_PCT}}% of its bandwidth ceiling, which is a
+                lot of headroom for a workload that is supposed to be limited by bandwidth. And the GPU, with
+                eleven times the measured bandwidth, is {{BASE_GPU_RATIO}} times faster, which sounds like a
+                win for the GPU until you notice it's sitting at half of its own ceiling. Both have specific
+                causes, and both are fixable without recompiling anything.
+            </p>
+            <p>
+                One word about that last column, because it matters for every CPU number in this post. This
+                baseline was taken under my normal working load: two dev servers, a VM, an IDE and a few
+                agents in the background. Some of the measurements below were taken in a quiet stretch with
+                all of that idle, and the two conditions differ by more than most of the flags I'm about to
+                test. Every table says which it is.
+            </p>
+
+            <h2>Threads on a hybrid CPU</h2>
+            <p>
+                llama.cpp's default thread count on Windows is the number of physical cores. On this chip that
+                is 16: eight performance cores and eight efficiency cores. The Linux build excludes E-cores
+                when it can read the topology; the Windows build doesn't, and <code>llama-bench --help</code>
+                confirms <code>(default: 16)</code>. Here's what that costs, one sweep from 1 to 24 threads,
+                run in a quiet stretch with nothing else on the machine, decode and prompt processing as two
+                separate passes.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/threads.svg" alt="Decode and prompt-processing speed of Qwen3-0.6B Q8_0 on the i7-14650HX against thread count from 1 to 24. Decode rises to 57 tok/s at 6 to 8 threads and falls steadily after that, to 26 at 24 threads. Prompt processing also peaks at 8 threads, at 518 tok/s, and drops once threads spill onto E-cores." loading="lazy" decoding="async">
+                <figcaption>Both curves peak at the P-core count. Past eight threads the E-cores are on the critical path and everything waits for them.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Threads</th>
+                            <th>pp256 (tok/s)</th>
+                            <th>tg128 (tok/s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{THREADS_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Decode is flat from six to eight threads, {{R2_T6_TG}} and {{R2_T8_TG}} tok/s, and then gets
+                worse with every thread you add: {{R2_T16_LOSS}}% slower at the default of 16, {{R2_T24_LOSS}}%
+                slower at 24. How much worse depends on the day. Two more paired runs of 16 against 8 threads
+                in the same quiet window gave {{PQ_16}} against {{PQ_8}}, a {{PQ_LOSS}}% loss, with 24 threads
+                at {{PQ_24}}; the sweep's 16-thread point was a worse placement than those. And under my
+                working load, the baseline above, the default was {{WORK_LOSS}}% slower than <code>-t 8</code>
+                ({{BASE_CPU_TG}} against {{PAIR_T8_TG}}, measured back to back). So the honest range for the
+                cost of the default on this chip is "somewhere between a few percent and half, and it gets
+                worse the busier the machine is". The reason is structural. Every matrix multiply in the decode graph is split
+                across the threads, and the graph can't move on until the slowest thread finishes its slice.
+                Thread nine lands on an E-core with a lower clock and a smaller share of the memory system,
+                so it finishes last, and the seven P-cores that were done early sit at the barrier waiting
+                for it. Sixteen threads means eight of them are slow, and the fast ones spend most of every
+                step idle. The wide error bar at 12 threads, {{R2_T12_SD}} tok/s across five runs, is the
+                scheduler sometimes getting the placement right and sometimes not.
+            </p>
+            <p>
+                I expected prompt processing to behave differently, because it's arithmetic-bound and an
+                E-core does contribute real FLOPs. It didn't. In the same sweep pp256 peaked at eight threads
+                too, {{R2_T8_PP}} tok/s against {{R2_T16_PP}} at sixteen and {{R2_T24_PP}} at twenty-four. The
+                batch is split into slices the same way the decode matmuls are, and a slice on an E-core still
+                takes longer than the rest of the step. To make sure I wasn't reading noise, I ran 8 versus 16
+                threads back to back on pp512 three more times: {{TB_PAIRS}} tok/s. The one pair where 16 won is
+                the one where something woke up mid-run; I looked and couldn't see what. Prompt processing,
+                being compute-bound, is the measurement that suffers most from a busy machine. Sixteen threads pinned
+                to the eight P-cores with their SMT siblings did {{TB_PIN16_PP}}, the same as eight pinned
+                ({{TB_PIN8_PP}}), so hyperthreading doesn't add anything either. On this chip and this build the
+                answer is one number, not two: <code>-t 8</code>, and leave <code>-tb</code> alone unless you've
+                measured it on your own machine. Linux builds that exclude E-cores automatically get this
+                right by default; the Windows build doesn't.
+            </p>
+            <p>
+                What about pinning the eight threads to the eight P-cores explicitly, one per physical core,
+                with <code>-C 0x5555 --cpu-strict 1</code>? I expected this to be the best CPU result in the
+                post, and for a while I thought it was: an early pinned run gave {{PIN_BEST_TG}} tok/s when an
+                unpinned <code>-t 8</code> run from my first, noisier thread sweep an hour earlier had given
+                {{SWEEP_T8_TG}}. But this laptop isn't
+                a benchmark rig. It runs two Vite dev servers, a VM, an IDE and a pile of agents while I work,
+                and the load comes and goes. When I finally measured the two settings back to back in a quiet
+                stretch, unpinned <code>-t 8</code> did {{QUIET_T8_TG}} tok/s and strict pinning did
+                {{QUIET_PIN_TG}}. The same. The earlier gap was the machine, not the flag. And in a paired run
+                with the background load present, strict pinning gave {{PAIR_STRICT_TG}} tok/s against
+                {{PAIR_T8_TG}} for plain <code>-t 8</code>, with individual samples of 54, 51, 49, 27 and 24:
+                whenever a pinned core was busy, the whole barrier waited on it, and a strictly pinned thread
+                can't migrate. So the recommendation is the boring one. Set the thread count to the number
+                of P-cores and let the scheduler place them. Pinning bought nothing when it was safe and cost
+                a third when it wasn't.
+            </p>
+            <p>
+                One more result from the same run that I didn't expect: eight threads confined to just four
+                P-cores with their SMT siblings (<code>-C 0xFF --cpu-strict 1</code>, effectively) decoded at
+                {{QUIET_4CORE_TG}} tok/s, the same as eight threads on eight cores. Decode needs enough
+                outstanding memory requests to keep the controller busy, and four cores with hyperthreads
+                generate as many as eight cores without. Prompt processing, which needs the arithmetic,
+                dropped from {{QUIET_8CORE_PP}} to {{QUIET_4CORE_PP}} tok/s. If you're sizing a CPU for decode,
+                bandwidth per core matters more than core count.
+            </p>
+            <p>
+                I also tried E-cores alone, eight threads strictly pinned to logical CPUs 16 to 23. Prompt
+                processing was fine at 130 tok/s. Decode was {{ECORE_TG}} tok/s. Not a typo. That's what a
+                barrier-bound workload looks like on cores that share a small ring stop and run at a fraction
+                of the clock; every step is a full round of the slowest core's memory latency. If you have
+                ever wondered why a background LLM task on a laptop crawls while the fan barely spins, this is
+                probably why: Windows put it on the E-cores.
+            </p>
+            <p>
+                One thing that did nothing: <code>--poll</code>. The Windows release is built with OpenMP, and
+                the poll setting is only read by llama.cpp's own threadpool. If you want to tune spin-wait
+                behaviour on Windows, the knobs are the OpenMP ones, <code>KMP_BLOCKTIME</code> and
+                <code>OMP_WAIT_POLICY</code>, not <code>--poll</code>.
+            </p>

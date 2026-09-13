@@ -1,0 +1,8 @@
+# large or machine-specific inputs; see README for how to fetch/rebuild them
+models/
+bin/
+data/
+research/tmp/
+results/kld/*.kld
+__pycache__/
+*.pyc

@@ -1,0 +1,176 @@
+            <h2>The GPU, and why a small model can't use it</h2>
+            <p>
+                The RTX 5060 Laptop has 384 GB/s of memory bandwidth, eleven times the CPU's measured 34. If
+                decode were purely bandwidth-bound the 0.6B Q8_0 would run at 600 tok/s. It runs at about
+                {{GPU_Q8_TG}}. Where did the other half go?
+            </p>
+            <p>
+                Into launches. A decode step for this model is roughly 350 to 450 CUDA kernel launches: for
+                each of 28 layers there's a norm, four attention projections, RoPE, the attention itself,
+                another norm, three FFN projections and an activation, plus the head. Each launch costs a few
+                microseconds of fixed overhead before any bytes move, and at 633 MB per step the bytes only
+                take 1.6 ms at full bandwidth. The fixed costs add up to something of the same order. llama.cpp
+                already mitigates this with CUDA graphs, which replay a recorded launch sequence instead of
+                issuing each kernel from the host, and the release builds have that on by default. It still
+                isn't free. This is the general rule for small models on big GPUs: below a couple of billion
+                parameters, decode speed is set by how many kernels are in the graph, not by how many bytes
+                they read.
+            </p>
+            <p>
+                The quantization sweep proves it. On the CPU, going from Q8_0 to Q4_K_M cut bytes by 38% and
+                sped decode up by {{CPU_Q4_SPEEDUP}}x, almost exactly the bandwidth model's prediction. On the
+                GPU the same change went from {{GPU_Q8_TG}} to {{GPU_Q4KM_TG}} tok/s, and Q6_K was actually
+                <em>slower</em> than Q8_0 at {{GPU_Q6K_TG}}, because its dequantization kernel does more work
+                per block and the bytes it saves weren't the bottleneck. Q2_K, at less than half the bytes of
+                Q8_0, ran at {{GPU_Q2K_TG}}. The one place bytes start to bite on the GPU is BF16: 1.2 GB per
+                token is 3 ms of transfer at full bandwidth, and it ran at {{GPU_BF16_TG}}. If you're running a
+                sub-1B model on a discrete GPU, quantizing
+                below Q8_0 buys you almost nothing in speed and costs you real accuracy. Keep it at Q8_0, or
+                Q8_0 with the Q6_K head.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/speed-vs-bytes.svg" alt="Two scatter plots of decode speed against weight bytes per token for all variants. Left, CPU: speed rises steadily as bytes fall, from 28 tok/s at BF16 to 82 at Q2_K. Right, CUDA: speed stays between 290 and 390 tok/s regardless of bytes." loading="lazy" decoding="async">
+                <figcaption>On the CPU, decode speed is a function of bytes. On this GPU, for this model, it isn't.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Variant</th>
+                            <th>MB / token</th>
+                            <th>CPU tg128, -t 8 (quiet sweep)</th>
+                            <th>CUDA tg128</th>
+                            <th>CUDA pp512</th>
+                            <th>Mean KLD</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{QUANT_SPEED_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Offload, one layer at a time</h2>
+            <p>
+                <code>-ngl</code> is the number of transformer layers whose weights live on the GPU; the rest
+                stay in system RAM and run on the CPU. The 0.6B has 28 layers, and a value above that also
+                moves the output head. Here's the whole sweep, with the eight CPU threads handling whatever
+                isn't offloaded.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/ngl-sweep.svg" alt="Line chart of decode speed against number of layers offloaded to the GPU for Qwen3-0.6B Q8_0, from 35 tok/s at zero layers to 293 tok/s with all 28 layers plus the output head. The curve bends sharply upward only in the last few layers." loading="lazy" decoding="async">
+                <figcaption>Partial offload is a poor deal. The speed lives in the last few layers, because the step is only as fast as the slowest device on the critical path.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>-ngl</th>
+                            <th>Where the weights live</th>
+                            <th>pp256 (tok/s)</th>
+                            <th>tg128 (tok/s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{NGL_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The shape of that curve is the important thing. Twelve of twenty-eight layers on the GPU is
+                not 43% of the way to GPU speed; it's {{NGL12_PCT}}% of the way. A decode step is sequential
+                through the layers, so the CPU layers set the pace regardless of how fast the GPU finishes its
+                share, and every step also pays to copy the hidden state across PCIe in each direction. Until
+                the CPU's share is small, you're paying GPU overhead for CPU speed. The other thing to notice
+                is the last row: 28 layers gives {{NGL28_TG}}, but "everything" gives {{NGL99_TG}}. The
+                difference is the tied head. With <code>-ngl 28</code> the 165 MB output matmul runs on the CPU
+                every token, and it's worth about 8% of the total.
+            </p>
+            <p>
+                The lesson generalizes to any model that doesn't fit: offload as many layers as will fit and
+                then some, because the first layers you leave on the CPU are the expensive ones, not the
+                cheap ones. I'll come back to this with a model that genuinely doesn't fit.
+            </p>
+
+            <h2>Flash attention, KV cache types, context depth</h2>
+            <p>
+                Three settings that people fiddle with on GPUs, measured at full offload.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Setting</th>
+                            <th>pp512 (tok/s)</th>
+                            <th>tg128 (tok/s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{FAKV_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Flash attention is on by default on this build (<code>-fa auto</code> resolves to on for CUDA)
+                and turning it off costs {{FA_PP_LOSS}}% of prompt throughput and {{FA_TG_LOSS}}% of decode.
+                That's the one setting here worth checking on older builds or other backends. The quantized
+                KV cache, on the other hand, does nothing useful at short context: <code>q8_0</code> keys and
+                values are a few percent slower than f16 at 128 tokens of context, because the model's KV
+                traffic is tiny next to its weights and the quantization adds work. Where it pays is depth.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/depth.svg" alt="Line chart of decode speed against context depth of 0, 2048, 8192 and 16384 tokens, for the GPU with f16 KV cache, the GPU with q8_0 KV cache, and the CPU with flash attention on and off. All lines fall with depth; the q8_0 KV line overtakes f16 past 8K tokens on the GPU; on the CPU the flash-attention-off line is faster past 2K." loading="lazy" decoding="async">
+                <figcaption>Every device slows down as the KV cache grows. Past 8K tokens a q8_0 cache is faster on the GPU because it halves the bytes attention has to read.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Configuration</th>
+                            <th>tg64 at 0</th>
+                            <th>at 2,048</th>
+                            <th>at 8,192</th>
+                            <th>at 16,384</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{DEPTH_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                At 16K tokens of context the f16 cache holds 1.8 GB for this model, and reading the relevant
+                part of it every step has become comparable to reading the weights. The GPU's decode speed
+                drops to a third of its short-context value; with a q8_0 cache it drops to 40%, so past 8K
+                the quantized cache wins outright. On a small model the cache is a bigger fraction of the
+                traffic than on a large one, so this crossover comes earlier than you'd see with an 8B.
+            </p>
+            <p>
+                The CPU result surprised me. With flash attention on, the CPU is <em>slower</em> at depth
+                than with it off: {{CPU_FA_ON_8K}} versus {{CPU_FA_OFF_8K}} tok/s at 8K tokens. The fused CPU
+                attention kernel in this build is tuned for the GPU-shaped problem, and on eight cores the
+                plain path, which does a big matmul then a softmax, keeps the memory system busier. It's a
+                reminder that <code>-fa auto</code> is a heuristic, and on CPU-only long-context work it's
+                worth measuring both.
+            </p>
+
+            <h2>Batch size for prompt processing</h2>
+            <p>
+                <code>-ub</code> sets the physical batch, the number of tokens that go through one matrix
+                multiply during prompt processing, and it's the one knob that turns a prompt from bandwidth-bound
+                into compute-bound. On the GPU, 2048 tokens of prompt at <code>-ub 64</code> run at
+                {{UB64_PP}} tok/s; at the default 512 they run at {{UB512_PP}}, and going higher does nothing.
+                On the CPU the curve is the same shape with smaller numbers: {{CPU_UB32_PP}} at 32 and
+                {{CPU_UB512_PP}} at 512. Leave it at the default unless you're memory-constrained, and if you
+                are, know that halving it costs real prompt throughput.
+            </p>

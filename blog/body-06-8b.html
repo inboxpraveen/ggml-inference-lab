@@ -1,0 +1,102 @@
+            <h2>When the model doesn't fit: Qwen3-8B on an 8 GB card</h2>
+            <p>
+                Everything above used a model that fits anywhere. The more common situation on a laptop is
+                the one where it almost fits. So I took Qwen3-8B at Q6_K, 6.7 GB of weights, on a card with
+                8 GB of which about 7 GB were free. At the tiny context <code>llama-bench</code> uses by
+                default it squeezes in whole, and I checked the working case too: at 4K context and all 37
+                layers on the card, the logs show 5,922 MB of weights, 576 MB of f16 KV cache and 100 MB of
+                compute buffer, 6.6 GB, and it loads. At 8K the cache doubles and the total passes what the
+                card has free. So the question of what to leave behind is real, and the first thing to know
+                is what "doesn't fit" looks like on Windows.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/ngl-8b.svg" alt="Line chart of Qwen3-8B Q6_K decode speed against layers offloaded: 5.3 tok/s on the CPU alone, 6.8 at 16 layers, 15 at 28, 23.7 at 32, 29.7 at 34, 34.8 at 36, 37.5 with the head on the GPU too. A second series shows FFN-only placement on the CPU for 4, 8 and 12 layers at 28.5, 20.6 and 14.5 tok/s." loading="lazy" decoding="async">
+                <figcaption>An 8B is bandwidth-bound on this GPU, so every layer you leave on the CPU costs its full share. Moving only the FFN weights of a layer is the cheaper way to give up VRAM.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Configuration</th>
+                            <th>Weights on CPU (approx.)</th>
+                            <th>pp256 (tok/s)</th>
+                            <th>tg64 (tok/s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{NGL8B_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Three things to take from this. First, the full-offload number: {{N8_99_TG}} tok/s for 6.72
+                GB per token is {{N8_BW}} GB/s of effective bandwidth, {{N8_BW_PCT}}% of the card's 384. That's
+                what a properly bandwidth-bound model looks like on this GPU, and it's the number the 0.6B
+                could never reach because it's too small to keep the card busy. Second, the CPU-only speed of
+                {{N8_CPU_TG}} tok/s is right where the memory model says it should be: 34 GB/s divided by 6.72
+                GB. Third, and this is the practical part, the price of each layer left behind. Going from 36
+                layers to 34 costs {{N8_36_34_PCT}}%. To 32, {{N8_36_32_PCT}}%. To 28, more than half. The curve
+                is the same shape as the 0.6B's, and for the same reason: the step is only as fast as the CPU's
+                share, and the CPU is six times slower per byte.
+            </p>
+            <p>
+                The better move, when you need to give back VRAM, is <code>-ot</code> with a pattern that
+                sends only the FFN weights of the first few layers to the CPU and keeps their attention on the
+                GPU. Four layers' FFNs are about 70% of four layers' bytes, and that configuration decoded at
+                {{N8_OT4_TG}} tok/s against {{N8_33_TG}} for the nearest whole-layer split. Attention is the
+                part that grows with context, and its KV cache stays on the GPU where the attention kernels
+                are; the FFN is a fixed-size matmul the CPU can handle. llama-server and llama-cli expose this
+                directly as <code>--n-cpu-ffn N</code>; <code>llama-bench</code> only has the pattern form.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">Giving back VRAM the cheap way</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># whole layers on the CPU: simple, costs ~8% per layer on this card</span>
+llama-server -m Qwen3-8B-Q6_K.gguf -ngl 32 -t 8 -fa on
+
+<span class="comment"># same VRAM back, attention stays on the GPU: keeps the KV cache and attention kernels fast</span>
+llama-server -m Qwen3-8B-Q6_K.gguf -ngl 99 --n-cpu-ffn 6 -t 8 -fa on
+
+<span class="comment"># the llama-bench spelling of the same thing</span>
+llama-bench -m Qwen3-8B-Q6_K.gguf -ngl 99 -ot "blk\.[0-5]\.ffn_.*=CPU" -t 8 -fa on</code></pre>
+            </div>
+
+            <p>
+                The KV cache at q8_0 is the other lever. It halves the cache's VRAM, and at this context length
+                it costs nothing measurable: {{N8_KVQ8_TG}} tok/s against {{N8_99_TG}} at full offload. On a
+                card that is one layer short, quantizing the cache is the first thing to try, before any
+                weights move.
+            </p>
+            <h3>What "doesn't fit" looks like on Windows</h3>
+            <p>
+                It doesn't look like an error. The Windows display driver lets a CUDA allocation overflow
+                into system RAM, so <code>-ngl 99</code> at 8K context loads fine and reports every layer
+                offloaded. With the server sitting there loaded, Windows' GPU process-memory counter showed
+                7,118 MB of it in dedicated VRAM and 274 MB in shared memory, which is system RAM the GPU
+                reaches over PCIe. And the same configuration in <code>llama-bench</code> decodes at
+                {{FD_99_D8K}} tok/s at 8K depth, where 4K gives {{FD_99_D4K}} and zero depth {{FD_99_D0}}.
+                The attention bytes at 8K account for a few percent of that drop, not a factor of four; the
+                rest is whatever the driver does to keep the resident set moving, and I can't see inside it.
+                What I can say is that nothing warns you. If your speed falls off a cliff when you raise the
+                context, this is the first thing to suspect.
+            </p>
+            <p>
+                The fixes, at the same 8K depth: <code>-ngl 34</code> gives back two layers and the head and decodes
+                at {{FD_34_D8K}} tok/s, <code>-ngl 32</code> at {{FD_32_D8K}}, and keeping every layer on the
+                card with a <code>q8_0</code> KV cache, which halves the cache to 576 MB, decodes at
+                {{FD_Q8KV_D8K}}. The quantized cache is the right answer by a wide margin, for the same reason
+                as before: it removes bytes without putting the CPU on the critical path.
+            </p>
+            <p>
+                One thing I deliberately didn't do is turn on <code>--fit</code>, which is on by default in
+                llama-server and llama-cli and will adjust <code>-ngl</code> and the context size to whatever
+                fits. It's a good default, and on Windows it's the thing standing between you and the silent
+                spill above. It's also a way to not know why your speed changed between two runs. When
+                you're measuring, set the numbers yourself.
+            </p>

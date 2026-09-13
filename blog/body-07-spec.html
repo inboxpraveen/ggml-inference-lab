@@ -1,0 +1,96 @@
+            <h2>Speculative decoding without a draft model</h2>
+            <p>
+                Decode is bandwidth-bound, which means the arithmetic units sit idle most of the time. If you
+                could guess the next several tokens and verify all of them in one forward pass, you'd read the
+                weights once for several tokens instead of once per token. That's speculative decoding, and
+                the usual way to get the guesses is a second, smaller model. But for a lot of real work, the
+                best predictor of the model's next tokens is the prompt itself. Editing, summarizing,
+                rewriting, extracting fields, fixing code: the output quotes the input. Prompt-lookup
+                decoding drafts by finding the last few tokens somewhere earlier in the sequence and proposing
+                whatever followed them last time. No second model, no extra weights read, and with greedy
+                sampling the output is guaranteed identical to normal decoding, because every drafted token is
+                verified by the real model before it's accepted.
+            </p>
+            <p>
+                llama.cpp has this built into <code>llama-server</code> and <code>llama-cli</code> as
+                <code>--spec-type ngram-simple</code>, <code>ngram-mod</code> and <code>ngram-cache</code>
+                (<code>llama-completion</code> doesn't accept the flag, and <code>llama-bench</code> has no
+                speculative mode at all). I also wrote my own version in the Python driver described in the
+                next section, mostly to understand it, and because I wanted control over the two parameters
+                that matter: how many tokens to match on, and how many to draft.
+            </p>
+            <p>
+                Three workloads, same for every configuration, temperature zero, 256 tokens out. "Free" asks
+                for an explanation of memory-bound decoding with no source text. "Edit" gives a paragraph with
+                three typos and asks for the corrected paragraph in full. "Quote" gives the same paragraph and
+                asks the model to quote two sentences verbatim and explain them.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/speculative.svg" alt="Grouped bar chart of end-to-end decode speed for three workloads, free, edit and quote, under plain decoding, llama-server's ngram modes, and the driver's n-gram loop, on CPU and on CUDA. The edit workload roughly doubles with drafting; the free workload does not change or gets slightly slower." loading="lazy" decoding="async">
+                <figcaption>Drafting from the prompt pays exactly when the output copies the prompt. On open-ended writing it finds nothing to draft.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Configuration</th>
+                            <th>Free (tok/s)</th>
+                            <th>Edit (tok/s)</th>
+                            <th>Quote (tok/s)</th>
+                            <th>Edit: accepted / drafted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{SPEC_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                {{SPEC_COMMENTARY}}
+            </p>
+            <p>
+                The mechanism in my driver is about forty lines and worth spelling out, because it's the same
+                thing the server does. Keep a dictionary from every n-gram in the sequence to the position
+                after it. After each accepted token, look up the last n tokens; if they occurred before, take
+                the tokens that followed as the draft. Decode <code>[token, draft...]</code> in one batch with
+                logits requested for every row. Row <em>i</em>'s argmax is the model's real prediction given
+                the draft up to <em>i</em>; accept while it agrees with the draft. Then roll the KV cache back
+                to the accepted length with <code>llama_memory_seq_rm</code> and continue. The cost of a
+                wrong guess is one forward pass over a handful of tokens, which on a bandwidth-bound model is
+                nearly the same as a pass over one token. The gain from a right guess is a full step's worth
+                of weight reads. That asymmetry is the whole idea.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">The verify step (scripts/driver.py, abridged)</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="keyword">batch</span> = [tok] + draft
+<span class="function">self</span>._decode(batch, n_past, <span class="string">'all'</span>)          <span class="comment"># one llama_decode, logits for every row</span>
+n_acc = <span class="number">0</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(batch)):
+    pred = <span class="function">int</span>(np.argmax(<span class="function">self</span>.logits_view(i)))  <span class="comment"># zero-copy view, no memcpy</span>
+    <span class="keyword">if</span> i &lt; <span class="function">len</span>(draft) <span class="keyword">and</span> pred == draft[i]:
+        n_acc += <span class="number">1</span>                            <span class="comment"># the model agrees, keep going</span>
+    <span class="keyword">else</span>:
+        nxt = pred; <span class="keyword">break</span>                     <span class="comment"># first disagreement: this is the real next token</span>
+out += draft[:n_acc]
+keep = n_past + <span class="number">1</span> + n_acc
+<span class="function">self</span>.lib.llama_memory_seq_rm(<span class="function">self</span>.mem, <span class="number">0</span>, keep, -<span class="number">1</span>)   <span class="comment"># drop the rejected tail from the KV cache</span>
+n_past = keep; tok = nxt</code></pre>
+            </div>
+
+            <p>
+                The draft-model version, for when you have a big target and a small sibling, is the
+                <code>--spec-type draft-simple</code> mode with <code>-md</code>. On the 8B with 28 layers on
+                the card, a split I picked before I'd checked that the whole model fits at 4K (it does, see
+                the previous chapter), though it has the side benefit of leaving room for the draft model's own
+                633 MB, the 0.6B as a draft gave {{SPEC_8B_DRAFT}} tok/s against {{SPEC_8B_NONE}}
+                without it on the edit workload, and {{SPEC_8B_DRAFT_FREE}} against {{SPEC_8B_NONE_FREE}} on
+                free writing, where n-gram lookup had nothing to offer. A small model from the same family
+                agrees with the big one often enough to draft for it on anything.
+            </p>

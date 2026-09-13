@@ -1,0 +1,200 @@
+            <h2>What I'd actually run</h2>
+            <p>
+                Collapsing all of that into a configuration for this laptop, and then into rules that transfer
+                to other machines.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Setting</th>
+                            <th>Decode, tok/s</th>
+                            <th>What changed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{LADDER_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Each row is measured against its own baseline in the same run, because on a shared laptop
+                the absolute numbers drift by 30% between a quiet hour and a busy one and only paired
+                comparisons mean anything. Reading it as multipliers: fixing the thread count is worth about
+                {{LADDER_THREADS_MULT}}x on this CPU, the Q6_K head another {{LADDER_HEAD_MULT}}x, and
+                self-speculative decoding {{LADDER_SPEC_MULT}}x on editing tasks and nothing on open-ended
+                writing. On the GPU the model was already close to its launch-bound ceiling out of the box;
+                the wins there are keeping the head on the card, keeping flash attention on, not quantizing
+                below Q8_0 for a model this small, and drafting when the task allows it.
+            </p>
+
+            <h2>Choosing for your hardware</h2>
+            <p>
+                These are the rules I'd hand to someone setting up a new machine, in the order they matter.
+            </p>
+
+            <h3>1. Work out your bytes-per-token budget first</h3>
+            <p>
+                Measure or look up your memory bandwidth, divide by the model file size, and that is your
+                decode ceiling on the CPU. Do the same with the GPU's bandwidth. If the CPU ceiling is under
+                10 tok/s for the model you want, the answer is a smaller model or a GPU, not a flag. If the
+                GPU ceiling is over 500 tok/s, the model is too small to use the GPU efficiently and you should
+                expect a third to a half of that number. Laptop memory is usually the binding constraint;
+                check whether you have one DIMM or two before anything else, because the second slot is the
+                cheapest 2x you will ever buy.
+            </p>
+
+            <h3>2. Threads: P-cores only, one number</h3>
+            <p>
+                Set <code>-t</code> to the number of performance cores and stop there. On Intel 12th gen and
+                later, and on any laptop chip with efficiency cores, the Windows default is wrong for decode:
+                it cost 5 to 23% on this chip with the machine idle and about half with my usual work running
+                alongside. It was wrong for prompt processing too, so
+                <code>-tb</code> isn't the escape hatch it looks like. On AMD and on older Intel parts without
+                E-cores, the default is fine. Don't bother pinning with <code>-C</code> and
+                <code>--cpu-strict 1</code>; it matched the unpinned result on a quiet machine and lost a
+                third on a busy one. Four P-cores with SMT gave the same decode speed as eight without, so on a
+                smaller chip you're not as far behind as the core count suggests.
+            </p>
+
+            <h3>3. Let the DLL pick itself, but know which one you got</h3>
+            <p>
+                Look for the <code>loaded CPU backend from</code> line. The mapping from CPU to variant, from
+                reading the build scripts and the scoring code:
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>CPU</th>
+                            <th>Variant loaded</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Intel 12th to 14th gen Core, Core Ultra (Meteor, Arrow, Lunar Lake)</td><td><code>alderlake</code></td><td>AVX2 + AVX-VNNI. AVX-512 is fused off on these parts. Use P-core thread counts.</td></tr>
+                        <tr><td>Intel 4th to 11th gen desktop and mobile without AVX-512 (Haswell through Comet Lake)</td><td><code>haswell</code></td><td>Same kernels as alderlake minus VNNI; measured within noise here.</td></tr>
+                        <tr><td>Intel Ice Lake, Tiger Lake, Rocket Lake (10th and 11th gen with AVX-512)</td><td><code>icelake</code></td><td>512-bit paths plus VNNI. Watch clocks; some of these parts downclock hard under AVX-512.</td></tr>
+                        <tr><td>Intel Xeon Skylake-SP / Cascade Lake / Cooper Lake / Ice Lake-SP</td><td><code>skylakex</code> / <code>cascadelake</code> / <code>cooperlake</code> / <code>icelake</code></td><td>One variant per Xeon generation, each adding VNNI or BF16.</td></tr>
+                        <tr><td>Intel Xeon Sapphire Rapids, Emerald Rapids, Xeon W-2400/3400</td><td><code>sapphirerapids</code></td><td>The only variant with AMX tiles. Big prompt-processing gains on the right quants.</td></tr>
+                        <tr><td>AMD Zen 1 through Zen 3 (Ryzen 1000 to 5000, EPYC Naples to Milan)</td><td><code>haswell</code></td><td>AVX2 without AVX-512. Full-speed K-quants.</td></tr>
+                        <tr><td>AMD Zen 4 and Zen 5 (Ryzen 7000 to 9000, EPYC Genoa, Turin)</td><td><code>zen4</code></td><td>AVX-512 with VNNI and BF16, no AMX. Beats sapphirerapids on the score only because that one requires AMX.</td></tr>
+                        <tr><td>Intel 2nd and 3rd gen, AMD FX</td><td><code>sandybridge</code> / <code>ivybridge</code> / <code>piledriver</code></td><td>AVX without AVX2. Q8_0 decode fine, K-quants noticeably slower, prompts 2x slower.</td></tr>
+                        <tr><td>Anything older, or a VM with a masked CPUID</td><td><code>sse42</code> or <code>x64</code></td><td>Avoid K-quants entirely; Q8_0 or Q4_0 only. Check the VM's CPU flags.</td></tr>
+                        <tr><td>Windows on ARM, Linux aarch64</td><td>one <code>ggml-cpu</code> library, or the <code>armv8.x</code> family</td><td>No x86 scoring; ARM feature detection is separate.</td></tr>
+                        <tr><td>Apple Silicon (macOS release)</td><td>no variants</td><td>A single natively compiled CPU backend; Metal is the path that matters anyway.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>4. Pick the quant by where the model runs, not by file size</h3>
+            <ul>
+                <li><strong>Small model (under ~2B) on a discrete GPU:</strong> Q8_0, or Q8_0 with a Q6_K head. Lower quants don't speed up decode measurably and cost real accuracy.</li>
+                <li><strong>Small model on CPU:</strong> Q8_0 if the ceiling is acceptable, Q6_K or Q5_K_M if you need the bytes. Below that, on a sub-1B model, accuracy goes fast. Check that your DLL has AVX2 before using any K-quant.</li>
+                <li><strong>7B to 14B that fits VRAM:</strong> the biggest quant that fits with your working context and a q8_0 KV cache. Q6_K and Q5_K_M are the sweet spots; the 8B was bandwidth-bound, so every bit saved is speed.</li>
+                <li><strong>7B to 14B that doesn't fit:</strong> quantize the KV cache first, then move the FFN weights of the first few layers to the CPU with <code>--n-cpu-ffn</code>, then and only then reduce <code>-ngl</code>.</li>
+                <li><strong>Making your own:</strong> re-quantize from the BF16 with a current build and an importance matrix. Keep the head at Q6_K or above. Don't hand-mix layers expecting to beat the default recipes; I couldn't.</li>
+            </ul>
+
+            <h3>5. Flash attention on, KV cache quantized past a few thousand tokens</h3>
+            <p>
+                Keep <code>-fa</code> on for GPU work; it's worth a third of prompt throughput. On CPU-only
+                long-context work, measure it both ways. Switch the KV cache to q8_0 when contexts run past
+                about 4K, or whenever you're short of VRAM; it costs nothing at short context and wins at long.
+            </p>
+
+            <h3>6. Speculate when the output repeats the input</h3>
+            <p>
+                Turn on <code>--spec-type ngram-mod</code> in llama-server for editing, rewriting, extraction,
+                code modification, anything where the answer copies from the prompt. Leave it off for
+                open-ended generation, where it adds a little overhead and finds nothing to draft. If you have a
+                small model from the same family, draft-model speculation is the stronger tool for a big
+                target, and the 0.6B is exactly the right draft for an 8B.
+            </p>
+
+            <h2>Reproduce it</h2>
+            <p>
+                Everything in this post lives in one folder with no build step. The companion repository has
+                the scripts, the raw <code>bench.jsonl</code>, the KLD outputs and the chart code. To rerun the
+                core of it on your own machine:
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">Minimal reproduction</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># 1. binaries: llama-b10941-bin-win-cpu-x64.zip and -win-cuda-13.3-x64.zip (+ cudart) from the llama.cpp releases page</span>
+<span class="comment"># 2. model + reference + imatrix</span>
+Qwen/Qwen3-0.6B-GGUF          Qwen3-0.6B-Q8_0.gguf
+unsloth/Qwen3-0.6B-GGUF       Qwen3-0.6B-BF16.gguf  imatrix_unsloth.dat
+ggml-org/ci                   wikitext-2-raw-v1.zip
+
+<span class="comment"># 3. the ceiling</span>
+python scripts/membw.py
+
+<span class="comment"># 4. threads</span>
+llama-bench -m Qwen3-0.6B-Q8_0.gguf -p 256 -n 128 -r 5 --prio 2 -ngl 0 -t 1,2,4,6,8,12,16,24
+
+<span class="comment"># 5. a variant, then its accuracy</span>
+llama-quantize --imatrix imatrix_unsloth.dat --output-tensor-type q6_k Qwen3-0.6B-BF16.gguf head-Q6_K.gguf Q8_0 8
+llama-perplexity -m Qwen3-0.6B-BF16.gguf -f wiki.test.raw -c 512 --chunks 200 -ngl 99 --kl-divergence-base base.kld
+llama-perplexity -m head-Q6_K.gguf       -f wiki.test.raw -c 512 --chunks 200 -ngl 99 --kl-divergence-base base.kld --kl-divergence
+
+<span class="comment"># 6. the driver</span>
+conda create -n infer-lab python=3.11 numpy cffi
+python scripts/bench_driver.py --model Qwen3-0.6B-Q8_0.gguf --bin bin/cpu --threads 8</code></pre>
+            </div>
+
+            <p>
+                A note on the machine state, because it affected the numbers and I'd rather say so than hide
+                it in the error bars. This laptop was doing my day job while the benchmarks ran: two Vite dev
+                servers, a VM, an editor and a pile of agent processes. Every result reports mean and standard
+                deviation over three to five repetitions, and I re-ran the paired comparisons back-to-back so
+                the noise hits both sides equally, but the absolute numbers are a floor. Where a comparison
+                mattered I measured it back to back, and I've said in each section which numbers came from a
+                quiet stretch and which didn't. The accuracy numbers are unaffected;
+                they don't depend on time.
+            </p>
+
+            <h2>What this doesn't tell you</h2>
+            <ul>
+                <li>One model family, one size. The head sensitivity result is specific to a tied, 152K-vocabulary, 600M-parameter model. An 8B with a separate output tensor will have a smaller head fraction and more redundancy in the layers; I'd expect the same direction, not the same magnitude.</li>
+                <li>Wikitext KLD is a proxy. It measures how far the distribution moved on encyclopedic prose, not whether the model still follows instructions or reasons. A quant that scores 0.01 here can still fail a task the reference passes; I've seen it. Run your own evals on your own prompts before shipping a quant.</li>
+                <li>Windows, prebuilt binaries. Linux gets E-core exclusion by default, direct I/O, and a different threadpool; macOS has Metal and unified memory, which changes the offload story completely.</li>
+                <li>No custom kernels. Everything here uses llama.cpp's own CPU and CUDA code paths. I looked at whether a custom build with <code>-march=native</code> would beat the prebuilt alderlake DLL and decided not to bother after seeing that alderlake and haswell were within noise; the gains are in bytes and scheduling, not in the multiply.</li>
+                <li>Single-user latency. Everything is one sequence at a time. Batched serving changes the arithmetic intensity and makes the GPU look much better relative to the CPU.</li>
+            </ul>
+
+            <h2>Closing note</h2>
+            <p>
+                I went into this expecting the head to be the trick. It half is: a Q6_K head on a Q8_0 body is
+                the one hand-mixed quant that beat the defaults, and it's free. But the bigger finding was less
+                glamorous. The single most expensive mistake on this laptop was a thread count, and the second
+                was a missing memory stick. Everything about kernels and instruction sets was worth less than
+                either. Measure the ceiling, then measure your distance from it, and the flags mostly pick
+                themselves.
+            </p>
+
+            <div style="margin-top: 3rem; padding: 2rem; background: var(--secondary-bg); border-radius: 15px; border: 1px solid var(--border-color);">
+                <h3 style="margin-top: 0;">Resources &amp; Links</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; margin-bottom: 2rem;">
+                    <a href="https://github.com/inboxpraveen/ggml-inference-lab" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">Scripts and raw results</a>
+                    <a href="https://github.com/ggml-org/llama.cpp/releases/tag/b10941" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">llama.cpp b10941</a>
+                    <a href="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">Qwen3-0.6B-GGUF</a>
+                </div>
+
+                <h4>Tags:</h4>
+                <div class="tag-row" style="--domain: var(--d-llm);">
+                    <span class="domain-pill">LLM &amp; RAG</span>
+                    <span class="stack-tag">llama.cpp</span>
+                    <span class="stack-tag">Quantization</span>
+                    <span class="stack-tag">CUDA</span>
+                    <span class="stack-tag">Python</span>
+                    <span class="stack-tag">Inference Engineering</span>
+                </div>
+            </div>

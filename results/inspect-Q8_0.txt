@@ -1,0 +1,44 @@
+general.architecture                     qwen3
+general.name                             Qwen3 0.6B Instruct
+general.file_type                        7
+qwen3.embedding_length                   1024
+qwen3.block_count                        28
+qwen3.feed_forward_length                3072
+qwen3.attention.head_count               16
+qwen3.attention.head_count_kv            8
+qwen3.attention.key_length               128
+qwen3.context_length                     40960
+tokenizer.ggml.model                     gpt2
+vocab (token count)                      151936
+
+tensor                           shape                  type     bpw           MB
+output_norm.weight               [1024]                 F32      32.00      0.00
+token_embd.weight                [1024, 151936]         Q8_0      8.50    165.31
+blk.0.attn_k.weight              [1024, 1024]           Q8_0      8.50      1.11
+blk.0.attn_k_norm.weight         [128]                  F32      32.00      0.00
+blk.0.attn_norm.weight           [1024]                 F32      32.00      0.00
+blk.0.attn_output.weight         [2048, 1024]           Q8_0      8.50      2.23
+blk.0.attn_q.weight              [1024, 2048]           Q8_0      8.50      2.23
+blk.0.attn_q_norm.weight         [128]                  F32      32.00      0.00
+blk.0.attn_v.weight              [1024, 1024]           Q8_0      8.50      1.11
+blk.0.ffn_down.weight            [3072, 1024]           Q8_0      8.50      3.34
+blk.0.ffn_gate.weight            [1024, 3072]           Q8_0      8.50      3.34
+blk.0.ffn_norm.weight            [1024]                 F32      32.00      0.00
+blk.0.ffn_up.weight              [1024, 3072]           Q8_0      8.50      3.34
+
+role                              params(M)        MB  %params  %bytes  types
+output_norm.weight                     0.00      0.00     0.00    0.00  F32
+token_embd.weight                    155.58    165.31    26.10   26.09  Q8_0
+blk.*.attn_k.weight                   29.36     31.20     4.93    4.92  Q8_0
+blk.*.attn_k_norm.weight               0.00      0.01     0.00    0.00  F32
+blk.*.attn_norm.weight                 0.03      0.11     0.00    0.02  F32
+blk.*.attn_output.weight              58.72     62.39     9.85    9.85  Q8_0
+blk.*.attn_q.weight                   58.72     62.39     9.85    9.85  Q8_0
+blk.*.attn_q_norm.weight               0.00      0.01     0.00    0.00  F32
+blk.*.attn_v.weight                   29.36     31.20     4.93    4.92  Q8_0
+blk.*.ffn_down.weight                 88.08     93.59    14.78   14.77  Q8_0
+blk.*.ffn_gate.weight                 88.08     93.59    14.78   14.77  Q8_0
+blk.*.ffn_norm.weight                  0.03      0.11     0.00    0.02  F32
+blk.*.ffn_up.weight                   88.08     93.59    14.78   14.77  Q8_0
+
+TOTAL params 596.05 M, bytes 633.50 MB, mean bpw 8.503

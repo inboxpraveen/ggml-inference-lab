@@ -1,0 +1,2 @@
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-cpu-alderlake.dll

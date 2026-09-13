@@ -1,0 +1,124 @@
+### ngl sweep (0.6B has 28 layers; 29 = +output)
+| model                          |       size |     params | backend    | ngl | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   0 |       8 |           pp256 |     2275.52 ± 178.35 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   0 |       8 |           tg128 |         35.19 ± 3.62 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   4 |       8 |           pp256 |     2070.26 ± 182.46 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   4 |       8 |           tg128 |         45.97 ± 8.51 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   8 |       8 |           pp256 |     2782.13 ± 206.00 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |   8 |       8 |           tg128 |         56.65 ± 9.70 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  12 |       8 |           pp256 |     3959.33 ± 324.16 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  12 |       8 |           tg128 |        71.24 ± 11.22 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  16 |       8 |           pp256 |     4807.11 ± 292.32 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  16 |       8 |           tg128 |        81.07 ± 19.41 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  20 |       8 |           pp256 |     6248.45 ± 590.18 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  20 |       8 |           tg128 |        123.41 ± 9.27 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  24 |       8 |           pp256 |    7461.25 ± 1153.02 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  24 |       8 |           tg128 |        188.07 ± 8.77 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  26 |       8 |           pp256 |     9813.82 ± 964.22 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  26 |       8 |           tg128 |       229.91 ± 14.69 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  27 |       8 |           pp256 |   12049.27 ± 1243.71 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  27 |       8 |           tg128 |        255.32 ± 4.00 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  28 |       8 |           pp256 |   14174.92 ± 1730.94 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  28 |       8 |           tg128 |        269.59 ± 4.47 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |       8 |           pp256 |   15875.14 ± 2618.23 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |       8 |           tg128 |        292.81 ± 6.17 |
+
+build: 4a8993735 (10941)
+### flash attention and KV cache types (full offload)
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |           pp512 |    19824.22 ± 928.76 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |           tg128 |       308.53 ± 20.30 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   0 |           pp512 |    12726.44 ± 495.08 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   0 |           tg128 |       274.07 ± 10.85 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |           pp512 |   18191.49 ± 1343.48 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |           tg128 |       293.49 ± 18.01 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q4_0 |   q4_0 |   1 |           pp512 |   18304.50 ± 1240.35 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q4_0 |   q4_0 |   1 |           tg128 |       290.57 ± 17.31 |
+
+build: 4a8993735 (10941)
+### depth: decode at 0 / 2k / 8k / 16k context
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |            tg64 |       319.67 ± 20.11 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |    tg64 @ d2048 |       253.70 ± 29.29 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |    tg64 @ d8192 |        166.54 ± 5.77 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   1 |   tg64 @ d16384 |         98.60 ± 1.44 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |            tg64 |       291.44 ± 16.12 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |    tg64 @ d2048 |       238.96 ± 21.53 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |    tg64 @ d8192 |        163.58 ± 3.81 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |   q8_0 |   q8_0 |   1 |   tg64 @ d16384 |        116.36 ± 1.28 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | threads |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   1 |            tg64 |         42.70 ± 7.97 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   1 |    tg64 @ d2048 |         24.67 ± 1.48 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   1 |    tg64 @ d8192 |          9.15 ± 0.20 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | threads |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   0 |            tg64 |         41.80 ± 5.63 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   0 |    tg64 @ d2048 |         26.64 ± 1.03 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |   0 |    tg64 @ d8192 |         13.72 ± 0.18 |
+
+build: 4a8993735 (10941)
+### ubatch for prompt processing
+| model                          |       size |     params | backend    | ngl | n_ubatch |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -------: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |       64 |          pp2048 |     8162.58 ± 639.29 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |      128 |          pp2048 |     11409.35 ± 77.60 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |      256 |          pp2048 |    13918.20 ± 725.15 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |      512 |          pp2048 |    16233.12 ± 827.06 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |     1024 |          pp2048 |    16377.73 ± 442.22 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CUDA       |  99 |     2048 |          pp2048 |    16002.37 ± 542.02 |
+
+build: 4a8993735 (10941)
+| model                          |       size |     params | backend    | threads | n_ubatch |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | -------: | --------------: | -------------------: |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |       32 |          pp1024 |        142.26 ± 7.21 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |       64 |          pp1024 |        177.48 ± 5.55 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |      128 |          pp1024 |       213.95 ± 20.75 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |      256 |          pp1024 |       216.35 ± 36.38 |
+| qwen3 0.6B Q8_0                | 604.15 MiB |   596.05 M | CPU        |       8 |      512 |          pp1024 |        198.00 ± 5.52 |
+
+build: 4a8993735 (10941)
+### tensor placement: head on CPU, FFN on CPU
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+    with open('/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl','a') as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl'
+<string>:7: SyntaxWarning: invalid escape sequence '\.'
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+    with open('/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl','a') as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl'
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+    with open('/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl','a') as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl'
+### CPU threads for prompt vs decode (pp likes more threads)
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+    with open('/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl','a') as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/c/PK/Github-Projects/ggml-inference-lab/results/bench.jsonl'
+### PART3 DONE
+ALL DONE

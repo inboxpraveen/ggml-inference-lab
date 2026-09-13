@@ -1,0 +1,40 @@
+### 8B: CPU only
+| qwen3 8B Q6_K                | pp128 t=8                                      |   6720 MB |    12.37 +-   1.66 |
+| qwen3 8B Q6_K                | tg32 t=8                                       |   6720 MB |     5.29 +-   0.16 |
+### 8B: ngl sweep (36 layers)
+| qwen3 8B Q6_K                | pp256 t=8 ngl=16 fa=1                          |   6720 MB |   442.12 +-  21.86 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=16 fa=1                           |   6720 MB |     6.75 +-   0.95 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=24 fa=1                          |   6720 MB |   608.53 +-  32.08 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=24 fa=1                           |   6720 MB |    10.65 +-   1.00 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=28 fa=1                          |   6720 MB |   802.09 +-  35.57 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=28 fa=1                           |   6720 MB |    14.96 +-   1.21 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=30 fa=1                          |   6720 MB |   895.05 +-  40.95 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=30 fa=1                           |   6720 MB |    17.27 +-   1.21 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=32 fa=1                          |   6720 MB |  1051.46 +-  55.53 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=32 fa=1                           |   6720 MB |    23.70 +-   0.68 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=33 fa=1                          |   6720 MB |  1097.93 +-  60.54 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=33 fa=1                           |   6720 MB |    25.46 +-   1.95 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=34 fa=1                          |   6720 MB |  1205.78 +-  61.57 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=34 fa=1                           |   6720 MB |    29.73 +-   0.63 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=35 fa=1                          |   6720 MB |  1324.93 +-  68.32 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=35 fa=1                           |   6720 MB |    31.93 +-   1.40 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=36 fa=1                          |   6720 MB |  1497.26 +-  42.73 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=36 fa=1                           |   6720 MB |    34.76 +-   1.00 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=99 fa=1                          |   6720 MB |  1654.42 +-  12.28 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=99 fa=1                           |   6720 MB |    37.50 +-   3.44 |
+### 8B: keep FFN of first N layers on CPU instead of whole layers (llama-bench has -ot, not -ncffn)
+<string>:7: SyntaxWarning: invalid escape sequence '\.'
+| qwen3 8B Q6_K                | pp256 t=8 ngl=99 fa=1 ot=blk\.[0-3]\.ffn_.*=CPU |   6720 MB |  1222.08 +-  43.23 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=99 fa=1 ot=blk\.[0-3]\.ffn_.*=CPU |   6720 MB |    28.47 +-   1.56 |
+<string>:7: SyntaxWarning: invalid escape sequence '\.'
+| qwen3 8B Q6_K                | pp256 t=8 ngl=99 fa=1 ot=blk\.[0-7]\.ffn_.*=CPU |   6720 MB |   961.82 +-  44.05 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=99 fa=1 ot=blk\.[0-7]\.ffn_.*=CPU |   6720 MB |    20.58 +-   1.18 |
+<string>:7: SyntaxWarning: invalid escape sequence '\.'
+| qwen3 8B Q6_K                | pp256 t=8 ngl=99 fa=1 ot=blk\.([0-9]|1[01])\.ffn_.*=CPU |   6720 MB |   788.66 +-  40.49 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=99 fa=1 ot=blk\.([0-9]|1[01])\.ffn_.*=CPU |   6720 MB |    14.49 +-   1.21 |
+### 8B: KV cache q8_0 to buy VRAM
+| qwen3 8B Q6_K                | pp256 t=8 ngl=99 fa=1 ctk=q8_0                 |   6720 MB |  1610.89 +-  22.38 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=99 fa=1 ctk=q8_0                  |   6720 MB |    36.37 +-   2.37 |
+| qwen3 8B Q6_K                | pp256 t=8 ngl=34 fa=1 ctk=q8_0                 |   6720 MB |  1216.05 +-  51.53 |
+| qwen3 8B Q6_K                | tg64 t=8 ngl=34 fa=1 ctk=q8_0                  |   6720 MB |    28.30 +-   1.86 |
+### PART4 DONE

@@ -1,0 +1,78 @@
+### server, 0.6B on CPU
+srv-cpu-none                 free             47.13 ±  3.81 tok/s  pp   390.5
+srv-cpu-none                 edit             32.01 ±  0.47 tok/s  pp   229.0
+srv-cpu-none                 summary_quote    27.03 ±  3.41 tok/s  pp   232.5
+srv-cpu-ngram-simple         free             36.97 ±  0.67 tok/s  pp   231.7
+srv-cpu-ngram-simple         edit             23.96 ±  0.69 tok/s  pp   227.2  draft 61/384 = 0.16
+srv-cpu-ngram-simple         summary_quote    26.69 ±  4.87 tok/s  pp   232.0  draft 49/144 = 0.34
+srv-cpu-ngram-mod            free             36.56 ±  1.11 tok/s  pp   236.6
+srv-cpu-ngram-mod            edit             39.41 ±  6.55 tok/s  pp   231.1  draft 1/64 = 0.02
+srv-cpu-ngram-mod            summary_quote    25.96 ±  1.93 tok/s  pp   235.8  draft 9/64 = 0.14
+srv-cpu-ngram-cache          free             38.44 ±  0.57 tok/s  pp   235.6
+srv-cpu-ngram-cache          edit             38.01 ±  0.56 tok/s  pp   224.6  draft 135/209 = 0.65
+srv-cpu-ngram-cache          summary_quote    39.22 ±  1.69 tok/s  pp   226.5  draft 53/80 = 0.66
+### server, 0.6B on CUDA
+srv-cuda-none                free            243.19 ± 11.88 tok/s  pp  4321.1
+srv-cuda-none                edit            249.46 ±  1.19 tok/s  pp 12437.6
+srv-cuda-none                summary_quote   234.17 ±  8.02 tok/s  pp 13164.7
+srv-cuda-ngram-simple        free            251.86 ±  0.74 tok/s  pp  4324.6
+srv-cuda-ngram-simple        edit            273.81 ±  6.47 tok/s  pp 14412.3  draft 61/384 = 0.16
+srv-cuda-ngram-simple        summary_quote   242.00 ± 23.80 tok/s  pp 13866.3  draft 14/144 = 0.10
+srv-cuda-ngram-mod           free            252.03 ±  3.22 tok/s  pp  5080.7
+srv-cuda-ngram-mod           edit            470.33 ± 158.23 tok/s  pp 13080.1  draft 1/64 = 0.02
+srv-cuda-ngram-mod           summary_quote   257.41 ± 20.40 tok/s  pp 13129.4  draft 2/128 = 0.02
+### driver, 0.6B
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-cpu-alderlake.dll
+free           greedy_loop        36.91 ±  1.91 tok/s  gen=256 same=True
+free           sampler_loop       37.12 ±  2.62 tok/s  gen=256 same=True
+free           ngram_spec_loop    36.42 ±  1.58 tok/s  gen=256 same=True accept=0.17 calls=244
+edit           greedy_loop        36.48 ±  0.88 tok/s  gen=195 same=True
+edit           sampler_loop       33.45 ±  0.70 tok/s  gen=195 same=True
+edit           ngram_spec_loop    60.53 ±  2.43 tok/s  gen=195 same=True accept=0.76 calls=61
+summary_quote  greedy_loop        36.19 ±  1.10 tok/s  gen=64 same=True
+summary_quote  sampler_loop       37.96 ±  1.21 tok/s  gen=64 same=True
+summary_quote  ngram_spec_loop    51.87 ±  2.13 tok/s  gen=64 same=True accept=0.58 calls=26
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8123 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8123 MiB
+load_backend: loaded CUDA backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cpu-alderlake.dll
+free           greedy_loop       271.76 ± 17.66 tok/s  gen=256 same=True
+free           sampler_loop      291.55 ±  4.33 tok/s  gen=256 same=True
+free           ngram_spec_loop   280.23 ±  6.01 tok/s  gen=256 same=False accept=0.12 calls=246
+edit           greedy_loop       276.01 ±  3.77 tok/s  gen=195 same=True
+edit           sampler_loop      269.31 ±  1.48 tok/s  gen=195 same=True
+edit           ngram_spec_loop   486.11 ±  6.55 tok/s  gen=195 same=True accept=0.76 calls=61
+summary_quote  greedy_loop       268.07 ±  5.52 tok/s  gen=78 same=True
+summary_quote  sampler_loop      283.50 ±  1.93 tok/s  gen=78 same=True
+summary_quote  ngram_spec_loop   504.43 ±  8.42 tok/s  gen=78 same=True accept=0.77 calls=28
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8123 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8123 MiB
+load_backend: loaded CUDA backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cuda\ggml-cpu-alderlake.dll
+free           ngram_spec_loop   283.76 ±  3.69 tok/s  gen=256 same=True accept=0.07 calls=246
+edit           ngram_spec_loop   569.81 ± 16.32 tok/s  gen=195 same=True accept=0.58 calls=54
+summary_quote  ngram_spec_loop   567.64 ± 22.17 tok/s  gen=78 same=True accept=0.65 calls=25
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-cpu-alderlake.dll
+free           ngram_spec_loop    30.94 ±  1.89 tok/s  gen=256 same=True accept=0.08 calls=244
+edit           ngram_spec_loop    51.20 ±  1.21 tok/s  gen=195 same=True accept=0.58 calls=54
+summary_quote  ngram_spec_loop    48.72 ±  0.87 tok/s  gen=64 same=True accept=0.50 calls=23
+load_backend: loaded RPC backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\PK\Github-Projects\ggml-inference-lab\bin\cpu\ggml-cpu-alderlake.dll
+free           ngram_spec_loop    41.45 ±  1.66 tok/s  gen=256 same=True accept=0.09 calls=237
+edit           ngram_spec_loop    60.99 ±  0.34 tok/s  gen=195 same=True accept=0.58 calls=56
+summary_quote  ngram_spec_loop    58.87 ±  1.81 tok/s  gen=64 same=True accept=0.49 calls=24
+### server, 8B on CUDA (best split from part 4 is filled in by hand)
+srv-8b-none                  free             13.98 ±  0.10 tok/s  pp   217.2
+srv-8b-none                  edit             13.66 ±  0.10 tok/s  pp   474.8
+srv-8b-none                  summary_quote    13.68 ±  0.01 tok/s  pp   485.3
+srv-8b-ngram-mod             free             14.43 ±  0.40 tok/s  pp   201.1
+srv-8b-ngram-mod             edit             24.59 ± 11.16 tok/s  pp   502.8  draft 2/41 = 0.05
+srv-8b-ngram-mod             summary_quote    14.37 ±  0.81 tok/s  pp   485.7  draft 1/49 = 0.02
+srv-8b-draft-0.6b            free             12.55 ±  0.99 tok/s  pp   169.2  draft 84/249 = 0.34
+srv-8b-draft-0.6b            edit             25.97 ±  0.08 tok/s  pp   479.8  draft 107/117 = 0.91
+srv-8b-draft-0.6b            summary_quote    16.08 ±  0.83 tok/s  pp   483.1  draft 93/201 = 0.46
+### PART5 DONE

@@ -1,0 +1,128 @@
+            <h2>A driver in a few hundred lines of Python</h2>
+            <p>
+                I wanted to know two things about the layer between llama.cpp and the code that calls it.
+                How much does a Python loop cost per token, compared with the C++ tools? And what does it take
+                to talk to <code>llama.dll</code> directly, without <code>llama-cpp-python</code>, so that the
+                binding tracks the release you actually downloaded instead of whichever commit the wheel was
+                built against?
+            </p>
+            <p>
+                The answer to the second question is: about 160 lines of <code>cffi</code> declarations. cffi
+                in ABI mode needs no compiler; you paste the struct definitions and function prototypes from
+                <code>llama.h</code> into a <code>cdef</code> string, <code>dlopen</code> the DLL, and call. The
+                only trap I hit was that <code>llama_backend_init()</code> doesn't load the dynamic backend
+                libraries; the CLI tools do that through <code>ggml_backend_load_all()</code> in
+                <code>common</code>, so the binding has to call
+                <code>ggml_backend_load_all_from_path()</code> on the release folder itself, or the model load
+                fails with "no backends are loaded". After that, the same file works for the CPU zip and the
+                CUDA zip; it's just a different folder.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">src/llamabind.py, the part that matters</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="keyword">from</span> cffi <span class="keyword">import</span> FFI
+ffi = FFI()
+ffi.cdef(r<span class="string">"""
+struct llama_model_params { ... };        // copied field-for-field from include/llama.h @ b10941
+struct llama_context_params { ... };
+typedef struct llama_batch { int32_t n_tokens; llama_token * token; float * embd; llama_pos * pos;
+                             int32_t * n_seq_id; llama_seq_id ** seq_id; int8_t * logits; } llama_batch;
+struct llama_model * llama_model_load_from_file(const char * path, struct llama_model_params p);
+int32_t llama_decode(struct llama_context * ctx, llama_batch batch);
+float * llama_get_logits_ith(struct llama_context * ctx, int32_t i);
+bool llama_memory_seq_rm(llama_memory_t mem, llama_seq_id seq, llama_pos p0, llama_pos p1);
+"""</span>)
+ggml = ggml_ffi.dlopen(<span class="string">'ggml.dll'</span>)
+ggml.ggml_backend_load_all_from_path(bin_dir)        <span class="comment"># the step llama_backend_init() does not do</span>
+lib = ffi.dlopen(<span class="string">'llama.dll'</span>)
+
+<span class="keyword">def</span> <span class="function">logits_view</span>(self, i):
+    p = lib.llama_get_logits_ith(self.ctx, i)
+    <span class="keyword">return</span> np.frombuffer(ffi.buffer(p, self.n_vocab * <span class="number">4</span>), dtype=np.float32)   <span class="comment"># no copy</span></code></pre>
+            </div>
+
+            <p>
+                The struct layout is the risk with ABI-mode bindings: get one field wrong and you corrupt
+                memory silently. My check was to call <code>llama_context_default_params()</code> and print
+                the fields; if <code>n_batch</code> reads 2048, <code>n_ubatch</code> 512 and
+                <code>flash_attn_type</code> minus one, the layout is right. Pin the binding to the release
+                tag and diff <code>llama.h</code> when you upgrade.
+            </p>
+            <p>
+                With that in place, three loops on the same context. A plain greedy loop: one
+                <code>llama_decode</code> per token, argmax with numpy over a zero-copy view of the 151,936
+                logits. The same loop with llama.cpp's own sampler chain doing the argmax in C, as a control
+                for the Python side. And the n-gram loop from the previous section.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Loop</th>
+                            <th>CPU, free</th>
+                            <th>CPU, edit</th>
+                            <th>CPU, quote</th>
+                            <th>CUDA, free</th>
+                            <th>CUDA, edit</th>
+                            <th>CUDA, quote</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{DRIVER_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                {{DRIVER_COMMENTARY}}
+            </p>
+            <p>
+                On Cython: I planned to write the loop in it and didn't, and I'll say why rather than pretend
+                it was a choice of taste. This laptop has no MSVC toolchain and CPython on Windows is built
+                with MSVC, so a Cython extension would have meant installing Visual Studio Build Tools or
+                fighting the MinGW ABI. More to the point, the measurements above show there's nothing for
+                Cython to recover. The per-token cost of the Python loop is tens of microseconds against a
+                27 ms decode step on the CPU and a 3.5 ms step on the GPU. The loop isn't the bottleneck; the
+                weights are. Where a compiled extension would matter is a sampler with real work in it, or a
+                batched server handling many sequences, and neither is what a single-user driver does.
+            </p>
+            <p>
+                The other honest caveat is the one the identity check in <code>bench_driver.py</code> carries.
+                It compares every loop's output tokens against the greedy loop's on the same prompt, and with
+                greedy sampling, speculative decoding is supposed to produce exactly the sequence plain
+                decoding would. It did, in all three workloads on the CPU and in the edit and quote workloads
+                on the GPU. (The extra draft-length runs, n=2 and 16 tokens, ran the n-gram loop alone, so
+                their check only proves the repetitions agreed with each other.) One free-writing run on the
+                GPU diverged. The reason is that a batch of eight tokens goes through
+                different CUDA kernels than a batch of one, with slightly different floating-point rounding,
+                and 256 tokens of open-ended text contain a near-tie or two where that rounding flips the
+                argmax. From there the sequences differ. It's not an error, the verified output is still a
+                valid greedy continuation of the model's own logits, but "bit-identical" is a property of
+                exact arithmetic, not of GPUs.
+            </p>
+
+            <h2>Loading: mmap, mlock, and time to first token</h2>
+            <p>
+                The last thing people ask about is the pause before the first token. On this machine, with
+                the file in the page cache, the 0.6B loads in {{LOAD_MMAP}} s with the default memory-mapped
+                mode and {{LOAD_NONE}} s with <code>--load-mode none</code>, which reads the file into a private
+                buffer instead of mapping it; <code>mlock</code> adds the cost of pinning the pages up front
+                and buys you protection against the OS paging them out later. None of those changes decode
+                speed once the weights are resident. The cold-cache case, the first run after a reboot, is
+                bounded by the drive: 640 MB from this NVMe is well under a second. The 6.7 GB model is about
+                three seconds cold.
+            </p>
+            <p>
+                Two newer options are worth knowing about even though they didn't apply here.
+                <code>--load-mode dio</code> asks for direct I/O to bypass the page cache; it's Linux-only in
+                this build and silently behaves like <code>none</code> on Windows. And
+                <code>--lazy-mode</code> reads certain tensors from disk on demand instead of keeping them
+                resident, which sounds like exactly what a memory-constrained laptop wants, but it applies
+                only to tensors an architecture has marked as lazy-readable, which at b10941 means the
+                per-layer embedding tables of Gemma 4 and the Qwen3.8 Flash Next family. For an ordinary dense
+                model it's a no-op.
+            </p>

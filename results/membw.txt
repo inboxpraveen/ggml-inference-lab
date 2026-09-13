@@ -1,0 +1,6 @@
+ 1 procs x 512 MB: aggregate   14.1 GB/s (best pass), median   13.4 GB/s
+ 2 procs x 512 MB: aggregate   22.7 GB/s (best pass), median   19.4 GB/s
+ 4 procs x 512 MB: aggregate   28.7 GB/s (best pass), median   28.0 GB/s
+ 6 procs x 512 MB: aggregate   34.0 GB/s (best pass), median   32.6 GB/s
+ 8 procs x 512 MB: aggregate   33.7 GB/s (best pass), median   31.4 GB/s
+12 procs x 512 MB: aggregate   32.8 GB/s (best pass), median   30.9 GB/s

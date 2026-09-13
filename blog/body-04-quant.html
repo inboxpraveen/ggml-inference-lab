@@ -1,0 +1,244 @@
+            <h2>Measuring accuracy properly</h2>
+            <p>
+                Speed without an accuracy number is a trap. Anyone can make a model fast by throwing bits
+                away. So before the quantization experiments, a word on how I scored them, because the method
+                matters as much as the results.
+            </p>
+            <p>
+                Perplexity alone isn't enough. It tells you how surprised the model is by real text, and a
+                quantized model can have almost the same perplexity as the original while disagreeing with it
+                on which token is most likely a good fraction of the time. The measure I trust is the one
+                llama.cpp's own contributors use to judge quantization: run the reference model over a text
+                corpus, save its full logit distribution at every position, then run the quantized model over
+                the same text and compute the Kullback-Leibler divergence between the two distributions at
+                each position. KLD is zero when the quantized model produces the same distribution as the
+                reference. It captures every kind of drift, not just the one token that happened to be
+                correct.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">Reference logits, then every variant against them</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># 1. BF16 reference over 200 chunks of 512 tokens of wikitext-2 test (51,000 scored positions), on the GPU</span>
+llama-perplexity -m Qwen3-0.6B-BF16.gguf -f wiki.test.raw -c 512 --chunks 200 -ngl 99 \
+    --kl-divergence-base base-bf16-c512-200.kld        <span class="comment"># 15.5 GB file, 82 seconds</span>
+
+<span class="comment"># 2. Each variant, same text, same chunking</span>
+llama-perplexity -m variant.gguf -f wiki.test.raw -c 512 --chunks 200 -ngl 99 \
+    --kl-divergence-base base-bf16-c512-200.kld --kl-divergence</code></pre>
+            </div>
+
+            <p>
+                A few things I learned about the tool that the README doesn't spell out. The stored logits are
+                not fp16: each position holds a scale, a minimum, and one uint16 per vocabulary entry, which
+                for a 152K vocabulary is 304 KB per scored token. That's why the full wikitext-2 test set would
+                be a 42 GB file, and why I capped it at 200 chunks. Two hundred chunks at 512 tokens scores
+                about 51,000 positions, enough that the error bars on mean KLD are in the fifth decimal place.
+                Running BF16 against its own stored logits gives a KLD of 0.00000 and a top-1 agreement of
+                99.99%, which is the encoding noise floor; everything below is well above it.
+            </p>
+            <p>
+                Two caveats on interpretation. Wikitext perplexity on an instruction-tuned, thinking-mode
+                model is a relative measure of degradation, not a task score; the text is scored raw, with no
+                chat template. And the popular thresholds you'll see quoted, "KLD under 0.01 is
+                indistinguishable, over 0.1 is noticeable", are folklore. They aren't in any llama.cpp
+                discussion I could find. What I use instead is the in-tree reference table for Llama-3-8B:
+                q8_0 scored 0.0014, q6_K 0.0055, q4_K_M 0.031, q3_K_M 0.10, q2_K 0.44. Keep those in mind when
+                you read the 0.6B numbers, because a 600M-parameter model is far more fragile than an 8B one.
+            </p>
+
+            <h2>Twenty-one variants, one chart</h2>
+            <p>
+                I built every variant from the unsloth BF16 GGUF with <code>llama-quantize</code> from the same
+                b10941 release, using unsloth's importance matrix for every type below Q8_0. Three families:
+                the standard mixes you'd download from any quant provider; variants where only the tied head
+                changes; and variants where a specific block changes, attention versus FFN versus a range of
+                layers. The plot below has bytes-per-token on the x axis and KLD on a log y axis. Down and to
+                the left is good.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/kld-vs-bytes.svg" alt="Scatter plot of 21 quantized variants of Qwen3-0.6B: weight bytes read per token on the x axis from 290 MB to 640 MB, mean KL divergence to BF16 on a log y axis from 0.002 to 1. The standard llama-quantize mixes form the lower-left frontier; head-only and block-only variants sit above it except the Q6_K head on a Q8_0 body." loading="lazy" decoding="async">
+                <figcaption>The standard mixes already trace the frontier. Hand-mixing only wins at the very top, where the head is the cheapest thing left to shrink.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Variant</th>
+                            <th>MB / token</th>
+                            <th>Head</th>
+                            <th>PPL</th>
+                            <th>Mean KLD</th>
+                            <th>99th pct KLD</th>
+                            <th>RMS &Delta;p</th>
+                            <th>Top-1 agree</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{KLD_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Reading down the standard column first. Q8_0 is the safe default everyone says it is: KLD in
+                the third decimal place, 97% top-1 agreement, and 47% fewer bytes than BF16 at essentially
+                no cost. Q6_K is the next real step, 23% fewer bytes for 2.6x the official Q8_0's KLD (3.8x
+                my own Q8_0's, which came out a little cleaner), but still under 0.011. Q5_K_M is where the curve bends; from there each 4-bit step roughly
+                doubles the divergence, and Q4_0, which some people still pick because it's "the standard
+                4-bit", is a bad deal against Q4_K_M at nearly the same size. Q3_K_M loses a quarter of top-1
+                agreement. Q2_K doubles the perplexity and agrees with the reference on the top token barely
+                more than half the time; on a model this small it isn't a quantization, it's a different
+                model.
+            </p>
+            <p>
+                Now compare with the 8B reference numbers I quoted. Q4_K_M on Llama-3-8B scores 0.031; on
+                Qwen3-0.6B it scores {{KLD_Q4KM}}. Same recipe, more than double the damage. Small models have
+                less redundancy to hide quantization noise in. If you are running a sub-1B model, the bits you
+                save between Q8_0 and Q4_K_M are the wrong bits to save, and the rest of this post will show
+                that they don't even buy much speed on a GPU.
+            </p>
+
+            <h2>The tied LM head</h2>
+            <p>
+                Back to the hunch. In a tied file, <code>llama-quantize</code> treats <code>token_embd</code> as
+                the output tensor: <code>--output-tensor-type</code> is the flag that changes it, and in every
+                K-quant mix the default is to hold it at Q6_K while the layers go lower. That's why the stock
+                Q4_K_M reads 391 MB per token and 33% of it is the head. So I asked the question in both
+                directions. Body at Q8_0, head going down: how much speed can the head give me for free? Body
+                at Q4_K_M, head going up: is the default Q6_K head protecting anything?
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/head-experiments.svg" alt="Two horizontal bar charts for a Q8_0 body with the head at Q8_0, Q6_K, Q5_K, Q4_K, IQ4_XS and Q3_K. Left: mean KLD rises from 0.0027 to 0.0915. Right: top-1 agreement falls from 97.0% to 82.8%." loading="lazy" decoding="async">
+                <figcaption>Body fixed at Q8_0, only the head changes. Q6_K is free. Q5_K is cheap. Q4_K and below are where the head starts to matter.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Body Q8_0, head at</th>
+                            <th>MB / token</th>
+                            <th>Bytes saved</th>
+                            <th>Mean KLD</th>
+                            <th>Top-1 agree</th>
+                            <th>CPU tg128, -t 8 (quiet sweep)</th>
+                            <th>CUDA tg128</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{HEAD_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Q6_K for the head is a genuine free lunch on the accuracy side: 38 MB fewer bytes on every
+                token, and a KLD of 0.0038 against 0.0040 for the official Q8_0 file, top-1 agreement within a
+                tenth of a point. The imatrix-weighted Q6_K quantization of the embedding rows is simply very
+                good. Q5_K costs twice the KLD of Q8_0 but is still under 0.008, well inside what anyone would
+                call transparent. Then the cliff. Q4_K on the head alone pushes KLD to 0.022 and drops top-1
+                agreement by nearly six points. That is more damage than quantizing the <em>entire</em> body
+                to Q5_K_M, for a third of the byte savings. IQ4_XS is no better, and Q3_K on the head alone
+                does as much harm as taking the whole model to Q4_K_S.
+            </p>
+            <p>
+                The speed side needs a more careful measurement than the big sweep gives, because a 6%
+                change in bytes is smaller than this machine's run-to-run noise. So I measured the head
+                variants back to back, alternating files, three rounds of five repetitions each. In the
+                quiet round, plain Q8_0 decoded at {{PH_Q8_R1}} tok/s, the Q6_K head at {{PH_Q6H_R1}}, the
+                Q5_K head at {{PH_Q5H_R1}}, and full Q6_K at {{PH_Q6_R1}}: gains of {{PH_Q6H_PCT}}%,
+                {{PH_Q5H_PCT}}% and {{PH_Q6_PCT}}% for byte reductions of 6%, 9% and 23%. That's the bandwidth
+                model again, to within a point. On the GPU none of the head variants moved the needle, for
+                the launch-bound reason explained further down. So: the Q6_K head is a few percent on the CPU
+                and a smaller file everywhere, at zero measurable accuracy cost. Not a headline, but free.
+            </p>
+            <p>
+                So the hunch was half right. The head is a quarter of the traffic and you can shave it, but
+                only by about 20%, and the reason is the thing that makes it a head: every one of its 151,936
+                rows gets multiplied against the hidden state on every token, and the logits are compared
+                against each other in a softmax. Quantization noise in the layers gets averaged across
+                thousands of hidden dimensions before it reaches the output; noise in the head lands directly
+                on the ranking of tokens.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/protect-head.svg" alt="Horizontal bar chart for a Q4_K_M body with the head at BF16, Q8_0, Q6_K and Q4_K. Mean KLD is 0.0727, 0.0731, 0.0741 and 0.0914 respectively." loading="lazy" decoding="async">
+                <figcaption>Body fixed at Q4_K_M. Raising the head above the default Q6_K changes nothing; lowering it to Q4_K does.</figcaption>
+            </figure>
+
+            <p>
+                The other direction is the more useful negative result. With the body at Q4_K_M, moving the
+                head from the default Q6_K up to Q8_0 changes KLD from {{KLD_Q4KM}} to {{KLD_Q4KM_Q8HEAD}},
+                and all the way to BF16 gives {{KLD_Q4KM_BF16HEAD}}. Those three numbers are the same number.
+                The layers are the bottleneck at that point, and the 47% larger file you get from a BF16
+                head buys nothing. The <code>--leave-output-tensor</code> advice that circulates for
+                re-quantization is a good idea when you're re-quantizing an already quantized file; it isn't a
+                quality lever on a fresh quant. Meanwhile dropping the head to Q4_K to match the body costs a
+                quarter more divergence for 10% fewer bytes. The default mix has this right.
+            </p>
+
+            <h2>Attention, FFN, or the edges</h2>
+            <p>
+                The same tool lets you target any tensor by regex, so I asked where the bytes are cheapest.
+                Three variants, body otherwise Q8_0: attention projections to Q4_K, FFN projections to Q4_K,
+                and the middle twenty layers to Q4_K with the first four and last four kept at Q8_0. Plus one
+                "reverse" mix: Q4_K_M with <code>ffn_down</code> and the head raised to Q8_0, which is the
+                shape of several popular "XL" quants.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-1/blocks.svg" alt="Horizontal bar chart of mean KLD for block-level variants: all Q8_0 0.0027, attention Q4_K 0.0412, FFN Q4_K 0.0521, layers 4 to 23 Q4_K 0.0589, ffn_down and head at Q8_0 with the rest Q4_K 0.0624, stock Q4_K_M 0.0741." loading="lazy" decoding="async">
+                <figcaption>Per byte saved, the FFN is slightly cheaper to quantize than attention on this model, and keeping the outer layers at full precision doesn't earn back its bytes.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Variant</th>
+                            <th>MB / token</th>
+                            <th>Bytes saved vs Q8_0</th>
+                            <th>Mean KLD</th>
+                            <th>KLD per 100 MB saved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{BLOCK_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Attention at Q4_K does less absolute damage than FFN at Q4_K, but it also saves fewer bytes,
+                and per hundred megabytes the FFN comes out slightly ahead. Neither is anywhere near the head
+                in sensitivity per byte. The layer-range mix, which is the intuition behind "keep the first
+                and last layers in high precision", didn't earn its keep here: the middle twenty layers at
+                Q4_K plus eight full-precision layers scores worse than putting the whole FFN stack at Q4_K
+                for about the same size. And the popular "raise <code>ffn_down</code>" recipe does help
+                relative to stock Q4_K_M, but it costs 70 MB per token to get there, at which point plain
+                Q5_K_M is smaller and better.
+            </p>
+            <p>
+                The honest summary of this whole section is that <code>llama-quantize</code>'s default mixes
+                are the Pareto frontier for this model. Every hand-built variant I made either matched a
+                standard mix at the same size or sat above the curve. The one exception is the top end: if you
+                want Q8_0 quality, take the Q8_0 body with a Q6_K head, and you get 6% fewer bytes with
+                nothing measurable lost. That, and not the general idea of per-layer mixing, is what I'd
+                actually ship.
+            </p>
+            <p>
+                A small side finding. My own Q8_0, built from the unsloth BF16 with b10941, scored a KLD of
+                {{KLD_Q8_OWN}} against {{KLD_Q8_OFFICIAL}} for the official file, and 97.0% top-1 against 96.4%.
+                Both files have identical head and norm tensors; all 196 per-layer weight tensors differ
+                byte-wise. Q8_0 has no importance matrix and its rounding is deterministic, so the official
+                file was made through a different conversion path, most likely from a different intermediate
+                precision or an older converter. I can't say which. What I can say is that re-quantizing from
+                the BF16 yourself, with a current build, is cheap and gave a slightly better file than the
+                one I downloaded.
+            </p>

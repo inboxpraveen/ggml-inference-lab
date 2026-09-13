@@ -1,0 +1,163 @@
+            <h2>The question I kept getting</h2>
+            <p>
+                Every few weeks someone at work asks me a version of the same thing. "We have this laptop, or
+                this one box in the office. Which quant should we run? How many threads? Is the GPU worth it
+                for a small model? Why does the number on the llama.cpp README not match what we see?" I had
+                opinions, and most of them came from reading other people's benchmarks on hardware nothing
+                like ours. That bothered me. So I took one small model, one laptop I use every day, and went
+                through every knob llama.cpp exposes with a stopwatch in one hand and a perplexity tool in
+                the other.
+            </p>
+            <p>
+                The idea I actually wanted to test came from a hunch. A transformer isn't one blob of weights.
+                It's an embedding table, a stack of layers, and an output head, and each of those can be
+                stored at a different precision. If the output head is a quarter of the model and it gets
+                read on every single token, then quantizing just that tensor should buy speed without touching
+                the layers that do the reasoning. Or the opposite: maybe the head is exactly the thing you
+                should protect and the layers are where the cheap bytes are. I didn't know. Now I do, with
+                error bars.
+            </p>
+            <p>
+                This is a long post. It's structured so you can stop at any section and still leave with
+                something usable. Every number here was produced by a script in the companion repository,
+                every chart is drawn from a results file you can open, and the whole thing runs on a
+                prebuilt llama.cpp release. No compiler needed, unless you want one.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>What you get</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>The machine and the model</td><td>Why a single 16 GB DIMM sets the ceiling, and why the LM head is 26% of every token</td></tr>
+                        <tr><td>Threads on a hybrid CPU</td><td>The default thread count is wrong on 12th to 14th gen Intel, and by how much</td></tr>
+                        <tr><td>Which CPU DLL you're running</td><td>How llama.cpp picks one of fourteen ggml-cpu libraries, and what forcing a different one costs</td></tr>
+                        <tr><td>Quantization, speed and accuracy</td><td>Twenty-one variants scored against BF16 with KL divergence, not vibes</td></tr>
+                        <tr><td>The tied LM head</td><td>What happens when you quantize only the head, and when you protect only the head</td></tr>
+                        <tr><td>GPU</td><td>Why a 0.6B model can't use a 384 GB/s card, and what to do about it</td></tr>
+                        <tr><td>When the model doesn't fit</td><td>Qwen3-8B on an 8 GB card: layer splits versus tensor placement</td></tr>
+                        <tr><td>Speculative decoding without a draft model</td><td>Self-drafting from n-grams, with the same greedy output</td></tr>
+                        <tr><td>A driver in a few hundred lines</td><td>Talking to llama.dll from Python with cffi, and where the overhead really is</td></tr>
+                        <tr><td>Choosing for your hardware</td><td>A decision guide by CPU family, RAM, VRAM and workload</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>The machine and the model</h2>
+            <p>
+                The laptop is an ASUS TUF F16 with an Intel Core i7-14650HX, an RTX 5060 Laptop GPU with 8 GB
+                of GDDR7, one 16 GB DDR5-5600 SO-DIMM and an NVMe drive. That "one" matters more than anything
+                else on the list. The board has two memory slots and only one is populated, so the CPU has a
+                single 64-bit channel to memory. Peak theoretical bandwidth is 5600 MT/s times 8 bytes, which
+                is 44.8 GB/s. A second DIMM would double it. Keep that number in mind; the whole CPU half of
+                this post is a story about it.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>What it is</th>
+                            <th>What matters for inference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>CPU</td><td>Intel i7-14650HX, 8 P-cores + 8 E-cores, 24 threads, Raptor Lake HX</td><td>AVX2, FMA, F16C and AVX-VNNI. No AVX-512. Hybrid scheduling is the trap.</td></tr>
+                        <tr><td>Memory</td><td>1 x 16 GB DDR5-5600, single channel</td><td>44.8 GB/s theoretical. I measured {{MEMBW}} GB/s achievable.</td></tr>
+                        <tr><td>GPU</td><td>NVIDIA RTX 5060 Laptop, 8 GB GDDR7, 128-bit bus, compute capability 12.0</td><td>384 GB/s. About 7 GB free with the desktop and other things resident.</td></tr>
+                        <tr><td>Storage</td><td>1 TB NVMe (WD SN5000S)</td><td>Only matters for the first load; every model here fits in RAM.</td></tr>
+                        <tr><td>OS and build</td><td>Windows 11, llama.cpp b10941 (0.4.0-dev), prebuilt win-cpu-x64 and win-cuda-13.3-x64 zips</td><td>Built with Clang 20. The CUDA zip carries native sm_120a code, so no PTX JIT on Blackwell.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The model is Qwen3-0.6B, the official <code>Qwen/Qwen3-0.6B-GGUF</code> Q8_0 file, 639 MB on
+                disk. I picked it because it's small enough to run every experiment on both the CPU and the
+                GPU dozens of times, and because it has a property that makes the head question sharp: its
+                output projection is tied to its input embedding. There is no <code>output.weight</code> tensor
+                in the file. The 151,936 x 1024 <code>token_embd.weight</code> matrix does both jobs.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">Tensor breakdown of Qwen3-0.6B-Q8_0.gguf (scripts/inspect_gguf.py)</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code>role                              params(M)        MB  %params  %bytes  types
+token_embd.weight                    155.58    165.31    26.10   26.09  Q8_0
+blk.*.attn_q.weight                   58.72     62.39     9.85    9.85  Q8_0
+blk.*.attn_k.weight                   29.36     31.20     4.93    4.92  Q8_0
+blk.*.attn_v.weight                   29.36     31.20     4.93    4.92  Q8_0
+blk.*.attn_output.weight              58.72     62.39     9.85    9.85  Q8_0
+blk.*.ffn_gate.weight                 88.08     93.59    14.78   14.77  Q8_0
+blk.*.ffn_up.weight                   88.08     93.59    14.78   14.77  Q8_0
+blk.*.ffn_down.weight                 88.08     93.59    14.78   14.77  Q8_0
+norms (F32)                            0.06      0.24     0.01    0.04  F32
+
+TOTAL params 596.05 M, bytes 633.50 MB, mean bpw 8.503</code></pre>
+            </div>
+
+            <p>
+                Twenty-six percent of the bytes are the embedding matrix. Here's the part that took me a while
+                to internalize. When a token goes <em>in</em>, the model looks up one row of that matrix: a
+                <code>get_rows</code> op that touches 1 KB. When a token comes <em>out</em>, the model multiplies
+                the final hidden state by the whole matrix to get a logit for every one of the 151,936
+                vocabulary entries. That's a <code>mul_mat</code> that reads all 165 MB. So the input side is
+                free and the output side costs a quarter of the model, on every decode step, no matter what
+                you do to the layers.
+            </p>
+            <p>
+                One more detail that turned out to matter for reproducing other people's numbers. Not every
+                Qwen3-0.6B GGUF on Hugging Face is tied. The HF safetensors checkpoint ships a redundant
+                <code>lm_head.weight</code> even though the config says <code>tie_word_embeddings: true</code>,
+                and the converter doesn't drop it. So the ggml-org and bartowski files have 311 tensors and an
+                extra 165 MB <code>output.weight</code>, while the official Qwen file and the unsloth files have
+                310. Bytes read per token are the same either way, since the head gets read once regardless of
+                which tensor holds it, but file size, RAM footprint and the default quantization mix all
+                differ. If someone's numbers don't match yours, check the tensor count first.
+            </p>
+
+            <h2>Bytes per token, the only model you need</h2>
+            <p>
+                Generating one token with a dense model means reading every weight once. Prompt processing is
+                different, because a batch of 512 tokens shares one read of the weights, but decode is one
+                token at a time and the arithmetic per byte is tiny. On this CPU the decode step does roughly
+                1.9 floating point operations per byte it reads; the chip can do about 23 per byte before it
+                would run out of memory bandwidth. So decode is bandwidth-bound by more than an order of
+                magnitude, and the fastest it can possibly go is
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">The ceiling</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code>tokens/s  &lt;=  bandwidth / bytes_read_per_token
+
+CPU, theoretical:  44.8 GB/s / 0.6335 GB  =  70.7 tok/s   (Qwen3-0.6B Q8_0, weights only)
+CPU, measured:     {{MEMBW}} GB/s / 0.6335 GB  =  {{CPU_CEIL}} tok/s
+GPU, theoretical:  384 GB/s  / 0.6335 GB  =  606 tok/s</code></pre>
+            </div>
+
+            <p>
+                Nobody achieves the spec sheet, so I measured what a plain streaming read gets: eight
+                processes each summing a private 512 MB buffer, started on a barrier so they overlap,
+                aggregate bytes over wall time. Best pass was {{MEMBW}} GB/s, {{MEMBW_PCT}}% of theoretical.
+                llama.cpp's own kernels turned out to do slightly better than my naive test, reaching about
+                36 GB/s at their best, so the honest ceiling is somewhere between {{CPU_CEIL}} and 70.7 tok/s
+                for this file on this CPU. Every CPU result below should be read against that range. If a
+                change moves you closer to it, it was a real improvement. If you're already near it, no
+                kernel on earth is going to double your speed; only fewer bytes per token will, or a way to
+                get more than one token per read.
+            </p>
+            <p>
+                The KV cache adds to the bytes as context grows. For this model that's 112 KB per position at
+                f16, which is small next to 633 MB of weights until you're thousands of tokens deep. I measured
+                that too, further down.
+            </p>
