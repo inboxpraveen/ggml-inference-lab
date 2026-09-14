@@ -1,0 +1,102 @@
+            <h2>What carries back to a laptop</h2>
+            <p>
+                I started this post to find out whether the arithmetic from one laptop said anything about
+                the fastest machine anyone sells. It does, and the place where it stops is the most useful
+                thing I learned. Here's the list.
+            </p>
+            <ul>
+                <li><strong>The bandwidth line is the right first question everywhere.</strong> It predicted the H100 box to within a third, the same margin it predicts my laptop to. When a machine sits at a third of a percent of its line, that's not the line being wrong; that's the line telling you the bottleneck moved. Compute the ceiling first, and if the achieved number is nowhere near it, stop tuning for bytes.</li>
+                <li><strong>I have already seen the latency regime on my own desk.</strong> In the last post the RTX 5060 decoded the six small models at an effective {{GPU_EFF_MIN}} to {{GPU_EFF_MAX}} GB/s against its 384 GB/s line, and the reason was kernel launch overhead: a few microseconds per operation, times a few hundred operations per token, with the bytes finishing early and the GPU waiting for the next instruction. That's the wafer's problem in miniature. A sub-billion-parameter model on a fast GPU is latency-bound for exactly the reason a 70B on four wafers is, and the fixes rhyme: fewer, fused operations (NVIDIA's kernel fusions; Cerebras's rewritten reduce and broadcast), a draft model so each pass emits more tokens, and a faster clock.</li>
+                <li><strong>Speculative decoding pays most where the pass is cheapest.</strong> The first post found n-gram drafts worth up to 1.7x on the CPU and 2.1x on the GPU when the text had something to copy from, and much less on free writing, with the gain set entirely by how often the draft was right. Cerebras gets about 3x, and NVIDIA about 2x, from the same idea, because a latency-bound pass verifies three tokens for almost the price of one; my GPU, launch-bound on a small model, gained more than my CPU for the same reason. If your machine is waiting rather than reading, drafts are the first thing to try; if it's reading, they're the last.</li>
+                <li><strong>KV cache bytes are the same enemy at both ends.</strong> On the laptop a 0.6B model's cache overtook its weights at 8K tokens; on the wafer a 70B's cache at 128K exceeds the free memory of four wafers. The models that cope are the same on both machines: sliding windows, latent attention, grouped queries. When you pick a model for a memory-constrained box, small cache per token is worth more than most other properties, and the chart in the last post gives the number for ten of them.</li>
+                <li><strong>Active bytes, not total, on a bandwidth-bound machine; total bytes, not active, on a capacity-bound one.</strong> The last post's MoE result (a 1.4 GB file decoding like a 0.5 GB one) and this post's wafer count for Kimi (set by the whole trillion) are the same architecture seen from two sides. Which side you're on is decided by whether the weights fit in the fast memory.</li>
+                <li><strong>Precision costs what it costs; whether it buys anything depends on the machine.</strong> The first post measured 8-bit as nearly free and 4-bit as a measurable loss in KL divergence. On the laptop 4-bit was also faster, roughly in proportion to the bytes saved. On a wafer, 4-bit buys wafers rather than speed. Same accuracy cost, different purchase.</li>
+                <li><strong>Pre-checks apply to press releases.</strong> The last post's checklist was for machines: is it plugged in, how many DIMMs, which kernels loaded. The equivalent for a published number is the table in the second section: which model, which precision, one user or many, draft model or not, who measured, which day. A number missing any of those is a rumour. The public endpoint at {{S_OSS_AA}} against the launch's {{S_OSS}} is the one I'd keep in mind.</li>
+            </ul>
+            <p>
+                And the things that don't carry. Nothing about a wafer's concurrency, where extra users
+                ride inside the latency window for free, applies to a machine that's reading weights from
+                DRAM; there, batch is the thing that's free and per-user speed is what you pay. The SRAM
+                capacity arithmetic doesn't apply either; a laptop's problem is never that the model won't
+                fit in the fast memory, it's that the fast memory is slow. And the economics are simply
+                different: no home machine has an idle power of 80% of its peak, and none of them needs
+                fourteen concurrent users to justify itself.
+            </p>
+
+            <h2>What I couldn't verify</h2>
+            <ul>
+                <li>How many wafers the 405B, Maverick, Qwen and Kimi deployments actually use. Cerebras has stated counts only for the 8B (one) and the 70B (four). Everything else is my arithmetic at a stated headroom.</li>
+                <li>The WSE-3's clock. It's published for the WSE-2 at {{WAFER_CORE_CLOCK_GHZ_WSE2}} GHz, and the WSE-3's dense compute only works out at 8-wide SIMD if the clock is about the same, but I haven't seen it stated.</li>
+                <li>The number of concurrent users per wafer in production, which decides the economics. The only data points are a 2024 forum reply and a 2024 refusal to answer.</li>
+                <li>The wafer-to-wafer latency of the CS-3. Cerebras states 2 microseconds for the 2026 rack and nothing for the previous one; "tens of microseconds over Ethernet" is my assumption.</li>
+                <li>The per-layer model. The fitted sync terms reproduce the two numbers they were fitted to by construction; the evidence for the model is that eight other published points cluster the way it predicts, not that I measured any of them.</li>
+                <li>Anything about the draft models: their size, where they run, and their acceptance rates. The 3x is inferred from the before-and-after speeds.</li>
+                <li>The analyst's cost figures ($450k BOM per wafer rack, 12 × 100 GbE, 6 TB of cache offload) are one firm's estimates and I've labelled them as such throughout.</li>
+            </ul>
+
+            <h2>Closing note</h2>
+            <p>
+                The first post ended with "the ceiling picks the flags". The second added "count the bytes
+                the way the model reads them" and "check the machine is the machine you think it is". This
+                one adds a third line to that list, and it's the one I'd have got wrong a month ago: the
+                bandwidth ceiling has an end, and past it the question changes from how many bytes to how
+                many microseconds. Cerebras built a machine that lives entirely past that point, where a
+                layer costs a fixed twenty-odd microseconds of on-chip latency no matter how wide it is, and
+                then spent two years shaving those microseconds and multiplying each one with a draft
+                model. What it gave up to get there is the memory to hold a long conversation, the compute to
+                read a long prompt quickly, and the flexibility to be efficient at anything but its one
+                job. Whether that's a good trade is a business question with a market cap in the tens of billions
+                attached to it and I don't have a view. Whether the numbers add up is an engineering
+                question, and as far as I can check them from the outside, they do.
+            </p>
+
+            <div style="margin-top: 3rem; padding: 2rem; background: var(--secondary-bg); border-radius: 15px; border: 1px solid var(--border-color);">
+                <h3 style="margin-top: 0;">Resources &amp; Links</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; margin-bottom: 2rem;">
+                    <a href="https://github.com/inboxpraveen/ggml-inference-lab" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">Source list, arithmetic and charts</a>
+                    <a href="./blog-1.html" class="demo-button" style="margin: 0;">llama.cpp on one laptop</a>
+                    <a href="./blog-2.html" class="demo-button" style="margin: 0;">Before you tune anything</a>
+                </div>
+
+                <h4>Independent measurements and papers:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="https://arxiv.org/abs/2502.04563" target="_blank" rel="noopener noreferrer">WaferLLM: Large Language Model Inference at Wafer Scale</a> (He et al., Edinburgh and Microsoft Research, 2025);
+                    <a href="https://arxiv.org/abs/2604.10852" target="_blank" rel="noopener noreferrer">The xPU-athalon: Quantifying the Competition of AI Acceleration</a> (USC, 2026);
+                    <a href="https://arxiv.org/abs/2409.00287" target="_blank" rel="noopener noreferrer">Benchmarking LLMs on the Cerebras Wafer Scale Engine</a> (USC, 2024);
+                    <a href="https://artificialanalysis.ai/providers/cerebras" target="_blank" rel="noopener noreferrer">Artificial Analysis, Cerebras provider page</a>;
+                    <a href="https://www.sec.gov/Archives/edgar/data/2021728/000162828026025762/cerebras-sx1april2026.htm" target="_blank" rel="noopener noreferrer">Cerebras Form S-1, April 2026</a>.
+                </p>
+
+                <h4>Vendor sources:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="https://www.cerebras.ai/blog/introducing-cerebras-inference-ai-at-instant-speed" target="_blank" rel="noopener noreferrer">Introducing Cerebras Inference</a> (Aug 2024);
+                    <a href="https://www.cerebras.ai/blog/cerebras-inference-3x-faster" target="_blank" rel="noopener noreferrer">Cerebras Inference now 3x faster</a> (Oct 2024);
+                    <a href="https://www.cerebras.ai/blog/llama-405b-inference" target="_blank" rel="noopener noreferrer">Llama 3.1 405B at 969 tokens/s</a> (Nov 2024);
+                    <a href="https://www.cerebras.ai/blog/cerebras-architecture-deep-dive-first-look-inside-the-hw-sw-co-design-for-deep-learning" target="_blank" rel="noopener noreferrer">Cerebras architecture deep dive</a>;
+                    <a href="https://www.cerebras.ai/blog/cerebras-cs3" target="_blank" rel="noopener noreferrer">CS-3 announcement</a> (Mar 2024);
+                    <a href="https://www.cerebras.ai/blog/blackwell-vs-cerebras" target="_blank" rel="noopener noreferrer">gpt-oss-120b vs Blackwell</a> (Aug 2025);
+                    <a href="https://www.cerebras.ai/blog/cerebras-kimi-k2-Enterprise" target="_blank" rel="noopener noreferrer">Kimi K2.6 on Cerebras</a> (May 2026);
+                    <a href="https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026" target="_blank" rel="noopener noreferrer">Hot Chips 2026 deep dive</a>;
+                    <a href="https://developer.nvidia.com/blog/blackwell-breaks-the-1000-tps-user-barrier-with-metas-llama-4-maverick" target="_blank" rel="noopener noreferrer">NVIDIA: Blackwell breaks 1,000 TPS/user</a> (May 2025);
+                    <a href="https://www.aboutamazon.com/news/aws/aws-cerebras-ai-inference" target="_blank" rel="noopener noreferrer">AWS and Cerebras collaboration</a> (Mar 2026);
+                    <a href="https://openai.com/index/introducing-gpt-5-3-codex-spark/" target="_blank" rel="noopener noreferrer">OpenAI: GPT-5.3-Codex-Spark</a> (Feb 2026).
+                </p>
+
+                <h4>Community and analysis:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please" target="_blank" rel="noopener noreferrer">SemiAnalysis: Cerebras, Faster Tokens Please</a>;
+                    <a href="https://www.theregister.com/2024/08/27/cerebras_ai_inference/" target="_blank" rel="noopener noreferrer">The Register on the launch</a> (Aug 2024);
+                    <a href="https://www.servethehome.com/cerebras-intros-faster-wse-3-turbo-processor-and-first-rack-scale-cs-4-system/" target="_blank" rel="noopener noreferrer">ServeTheHome on the WSE-3 Turbo and CS-4</a> (Aug 2026);
+                    Hacker News threads on the <a href="https://news.ycombinator.com/item?id=41371041" target="_blank" rel="noopener noreferrer">launch</a>, the <a href="https://news.ycombinator.com/item?id=42178761" target="_blank" rel="noopener noreferrer">405B</a> and the <a href="https://news.ycombinator.com/item?id=44760023" target="_blank" rel="noopener noreferrer">480B coder</a>.
+                </p>
+
+                <h4>Tags:</h4>
+                <div class="tag-row" style="--domain: var(--d-llm);">
+                    <span class="domain-pill">LLM &amp; RAG</span>
+                    <span class="stack-tag">Cerebras</span>
+                    <span class="stack-tag">Wafer-scale</span>
+                    <span class="stack-tag">Inference Engineering</span>
+                    <span class="stack-tag">Hardware</span>
+                    <span class="stack-tag">Speculative Decoding</span>
+                </div>
+            </div>

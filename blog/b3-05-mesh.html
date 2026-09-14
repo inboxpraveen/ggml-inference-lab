@@ -1,0 +1,98 @@
+            <h2>Putting a transformer on a mesh</h2>
+            <p>
+                Cerebras hasn't published how its inference stack lays a model out. But in early 2025 a group
+                at Edinburgh and Microsoft Research did the next best thing: they wrote their own LLM
+                inference system for the WSE-2 from scratch, in about seven thousand lines of Cerebras's
+                low-level language, ran Llama 3 8B and Llama 2 13B end to end on a real wafer, and published
+                everything, code included. The paper is called WaferLLM, and it is the most useful document
+                I read for this post, because it shows what goes wrong when you don't respect the hardware
+                and roughly how much you get back when you do.
+            </p>
+
+            <h3>Why the obvious software is hundreds of times too slow</h3>
+            <p>
+                The obvious thing is to treat the wafer as a very large GPU: pretend the distributed SRAM is
+                one big memory and let the compiler fetch whatever it needs from wherever it is. WaferLLM
+                tried exactly that, by porting a state-of-the-art compiler built for shared-memory chips.
+                It decoded the 8B at about fifteen tokens a second, and end to end, with the prompt
+                included, at about one. Their own design decoded at {{PAPERS_WAFERLLM_8B_DECODE_TPS}}. That's
+                not a tuning gap; that's the difference between software that knows there is no shared
+                memory and software that doesn't.
+            </p>
+            <p>
+                They boil the hardware down to four properties, which I'll paraphrase because they're the
+                right lens for the rest of the post. There are a million cores, so anything you don't split
+                a million ways leaves most of the chip idle. Latency between cores is wildly non-uniform,
+                up to a thousand times between a neighbour and the far corner. Each core has almost no
+                memory, so tensors must be cut into tiny pieces and nothing can be duplicated carelessly. And
+                each router only has 24 routes, so you can't just give every core a direct path to every
+                other; long-distance messages either get one of the scarce routes or get forwarded by
+                software at each intermediate core, which is much slower.
+            </p>
+            <p>
+                Under those rules the standard building blocks come apart. The matrix multiply that
+                prefill needs (a GEMM) is normally done with all-gather or broadcast patterns that have each
+                core talk to a whole row; here that violates the route limit and puts the far corner on the
+                critical path. Their replacement keeps every message within two hops by interleaving which
+                core holds which tile, and beat Cerebras's own default GEMM by two to three times. The
+                matrix-vector product decode needs (a GEMV) is worse. Each core computes a partial sum
+                over its slice of the weights, and then those partial sums have to be added up across the
+                whole wafer and the result broadcast back, every layer, every token. Done the default way as
+                a pipeline of adds along a row, that reduction has the far core waiting on hundreds of
+                sequential hops. With the default reduction, they measured
+                communication at up to {{PAPERS_WAFERLLM_COMM_SHARE_PCT}}% of the GEMV's total time at large
+                core counts; their tree-shaped reduction cut the whole GEMV's time by
+                {{PAPERS_WAFERLLM_MESHGEMV_VS_VENDOR}}x, and communication was still the largest term.
+            </p>
+            <p>
+                Read that last sentence again, because it's the first sighting of the thing that eats the
+                bandwidth. On a wafer, a matrix-vector product is not limited by reading the matrix. Every
+                core reads its 48 KB slice in a few thousand cycles, under three microseconds. It's limited by adding up a million
+                partial results and telling everyone the answer, which is a latency problem, and no amount
+                of SRAM bandwidth makes a latency problem smaller.
+            </p>
+
+            <h3>The KV cache on a mesh</h3>
+            <p>
+                The other problem they solved is one I hadn't thought about. On a GPU, the KV cache grows by
+                appending each new token's keys and values to the end of a buffer. On a mesh, "the end of the
+                buffer" is a particular core, and after a few hundred tokens that one core holds everything
+                new while its neighbours hold nothing, so it runs out of its 48 KB and becomes the bottleneck
+                for the whole attention. WaferLLM's fix is to shift: each row hands its oldest cache entries
+                to the row above as new ones arrive, so the cache stays spread evenly. That single change took
+                the longest sequence they could decode from a few hundred tokens to over a hundred thousand,
+                {{PAPERS_WAFERLLM_KV_CAPACITY}}x more. The KV cache isn't just bytes on this machine; it's
+                geography.
+            </p>
+
+            <h3>How far they got, and how far they didn't</h3>
+            <p>
+                Their GEMV alone was {{PAPERS_WAFERLLM_GEMV_SPEEDUP_A100}}x faster than one A100. Their whole
+                model was {{PAPERS_WAFERLLM_E2E_SPEEDUP}}x faster than the best they could get from a
+                16-GPU A100 cluster running SGLang. They are candid about why the second number is so much
+                smaller than the first. With 48 KB per core they couldn't hold a whole layer's weights on
+                enough cores to run the layers one after another with the full wafer on each; they had to lay
+                layers out side by side in a pipeline, and a pipeline with one user in it has most of its
+                stages idle at any moment. They put the underutilisation from that at up to
+                {{PAPERS_WAFERLLM_PIPELINE_UNDERUSE}}x. Cores at the wafer's edge were underused, and
+                long-range communication, though much reduced, never went away. Their conclusion is that five
+                or six times more memory per core would let the whole wafer work on one layer at a time and
+                remove the pipeline; the WSE-3 didn't do that, so presumably Cerebras removed it another way.
+            </p>
+            <p>
+                Which brings me to what Cerebras did say. Their October 2024 post announcing the 3x jump
+                lists exactly the operations WaferLLM found to matter: matrix multiply, reduce and broadcast,
+                element-wise operations and activations were rewritten or optimised, wafer I/O was made
+                asynchronous from compute, and speculative decoding was added. Read alongside the paper,
+                that's a company solving the same four problems privately that the academics solved
+                publicly. And the two results land close: Cerebras's launch-day 8B figure, {{S_8B}} tokens a
+                second on a WSE-3 with no draft model yet, against WaferLLM's
+                {{PAPERS_WAFERLLM_8B_DECODE_TPS}} decode-only on the older WSE-2 (the paper's end-to-end
+                figure with a 2K prompt is lower, around 2,400). To me that's the strongest evidence in this
+                post that the published speeds are real hardware behaviour and not a benchmark artefact: two
+                groups, one with no commercial incentive, landed within a factor of two on different
+                generations of the chip.
+            </p>
+            <p>
+                All of that is for models that fit in one wafer. Most of the interesting ones don't.
+            </p>

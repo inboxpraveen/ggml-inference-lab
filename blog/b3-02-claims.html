@@ -1,0 +1,80 @@
+            <h2>What is claimed, and when</h2>
+            <p>
+                The chart below is every per-user decode speed I could find with a date on it, from the
+                launch of Cerebras Inference in August 2024 to the week I'm writing this. Squares are the
+                vendor's own statements, circles were measured by Artificial Analysis, diamonds are a
+                competitor's number as quoted by Cerebras. The two amber squares at the bottom left are the
+                H100 cloud figures Cerebras used as its baseline on launch day, which I include because they
+                are the denominator of every "20x faster" in the press releases.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/timeline.svg" alt="Scatter of published per-user output tokens per second against date, log scale. Cerebras points rise from 450 and 1,800 in August 2024 through 2,100, 969, 2,600, 2,522, 3,000 and 4,400; NVIDIA systems sit at 128 and 242 in 2024, 1,038 and 650 in 2025." loading="lazy" decoding="async">
+                <figcaption>Per-user decode speed as published, by date and by who measured it. Nothing here is mine; the chart exists so the rest of the post can point at specific dots.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Model</th>
+                            <th>tok/s per user</th>
+                            <th>Who</th>
+                            <th>Kind</th>
+                            <th>What it quietly assumes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{SPEED_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Five things about this table before any of it gets used.
+            </p>
+            <p>
+                First, all of it is per-user speed: how fast one conversation's tokens arrive. It says
+                nothing about how many conversations the machine serves at once, and the machine's
+                economics live entirely in that second number. I'll come back to it, because it's the one
+                Cerebras has been least willing to state.
+            </p>
+            <p>
+                Second, speculative decoding. From October 2024 onward every Cerebras number involves a small
+                draft model proposing tokens that the big model checks in one pass, and Cerebras says so;
+                their own post warns that speed will vary 20% either way as a result. NVIDIA's Blackwell record
+                uses the same idea under the name EAGLE-3. Speculative decoding doesn't change what the
+                hardware can do per forward pass; it changes how many tokens each forward pass is allowed to
+                emit. That distinction turns out to be the key to the whole post, so the two Cerebras numbers
+                from before it was switched on ({{S_8B}} for the 8B and {{S_70B_AUG}} for the 70B) are the
+                ones I trust most for working out what the wafer itself does.
+            </p>
+            <p>
+                Third, precision. Cerebras led with "16-bit weights, no quantization" and, for the Llama
+                models, kept to it. For Kimi K2.6, a trillion-parameter model, their own post says weights are
+                stored in 4-bit and computed in 16-bit, which is exactly what my laptop does with a Q4 file
+                and is a perfectly good choice; it just isn't the launch-day claim, and it matters for the
+                wafer count later.
+            </p>
+            <p>
+                Fourth, the last dot. Artificial Analysis today lists the public gpt-oss-120b endpoint at
+                {{S_OSS_AA}} tokens a second with a {{S_OSS_AA_TTFT}} second time to first token. The August 2025
+                launch number for the same model on the same generation of hardware was {{S_OSS}}, and the
+                Hot Chips demo on the new rack was {{S_OSS_CS4}}. A public endpoint under load measured with
+                a long prompt is a different experiment from a launch-day run, and I'd expect it to be
+                lower. But if you are pricing a product on the press-release number, that gap is the first
+                thing to know about.
+            </p>
+            <p>
+                Fifth, the baselines. The 128 and 242 tokens a second for H100 clouds are what Cerebras
+                measured on other people's services in August 2024. Within a year NVIDIA published
+                {{S_MAV_NV}} on a 400B model from a single 8-GPU box, using FP8 and a draft model. The "20x"
+                was real on the day and is not the ratio now; the honest current comparison for a large MoE
+                is roughly {{RATIO_MAV}}x on Maverick and {{RATIO_OSS}}x on gpt-oss-120b, both with draft
+                models on both sides.
+            </p>
+            <p>
+                With the claims pinned down, the question is what any of them would require. That's
+                arithmetic, and it's the same arithmetic as the laptop's.
+            </p>

@@ -1,0 +1,160 @@
+            <h2>What the design gives up</h2>
+            <p>
+                Everything the last section credited to SRAM latency has a bill attached, and each line of
+                the bill shows up somewhere in the public record if you know to look. I'll take them in the
+                order I found them.
+            </p>
+
+            <h3>Context: the cache lives in the same 44 GB</h3>
+            <p>
+                The last post computed KV cache bytes per token for a dozen models. Same arithmetic here,
+                against the wafer. Llama 3.1 70B stores {{KV_70B_KB}} KB per token of context at 16-bit. One
+                user at 8K context is {{KV_70B_8K_GB}} GB; at 128K, {{KV_70B_128K_GB}} GB. The four wafers
+                that hold the 70B have {{FREE_SRAM_70B_GB}} GB between them left over after the weights, and
+                that has to cover activations and working buffers too. One long-context user fills it.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/kv-vs-sram.svg" alt="Grouped log-scale bars of KV cache per user at 8K, 32K and 128K context for seven models, against a dashed line at 44 GB. gpt-oss-120b 0.3, 1.2, 4.8 GB; Kimi K2.6 0.6, 2.3, 9.2; Llama 8B 1.1, 4.3, 17; Qwen3-235B 1.6, 6.3, 25; Maverick 1.6, 6.4, 26; Llama 70B 2.7, 11, 43; Llama 405B 4.2, 17, 68." loading="lazy" decoding="async">
+                <figcaption>Cache per user by context length, computed from each model's published attention configuration. The two models Cerebras is fastest on, gpt-oss-120b and Kimi K2.6, are also the two with the smallest cache per token, by a wide margin.</figcaption>
+            </figure>
+
+            <p>
+                That chart explains three things at once. It explains why Cerebras Inference launched with an
+                8K context limit in August 2024 and still tops out at 128K today, when GPU providers offer a
+                million; a GPU rack has terabytes of HBM to spend on cache and the wafer has what's left of
+                44 GB. It explains the analyst's report of a separate CPU node with six terabytes of DDR5 per
+                wafer for cache offload: if the cache can't live on the wafer, it lives next to it and is
+                streamed in, which costs latency at depth, and the 405B's own launch numbers show exactly
+                that shape, {{S_405B}} tokens a second at a 1K prompt and {{S_405B_100K}} at 100K. And it
+                explains which models Cerebras chooses to be fastest on. gpt-oss-120b keeps a full cache in
+                only half its layers (the rest use a 128-token sliding window) and stores {{KV_OSS_KB}} KB per
+                token; Kimi K2.6 uses DeepSeek's latent attention and stores {{KV_KIMI_KB}} KB. At 128K
+                those are {{KV_OSS_128K_GB}} and {{KV_KIMI_128K_GB}} GB per user, small enough that a wafer
+                can hold a real number of users. A model architect who wants to run fast on this machine
+                would pick a small cache per token over almost any other property, and OpenAI's Codex-Spark,
+                built for it, almost certainly did.
+            </p>
+
+            <h3>Prompts: the prefill is the weaker half</h3>
+            <p>
+                Everything so far has been decode. Prefill, the processing of the prompt, is the opposite
+                workload: no serial dependency between tokens, so it's all matrix multiplies, and it's
+                limited by compute, not latency. A 100K-token prompt on the 405B is roughly
+                {{PREFILL_405B_100K_PFLOP}} PFLOP of matrix work, plus attention that I've left out and that
+                roughly doubles it at that length. At {{DENSE_FROM_CORES}} PFLOPS dense per wafer and
+                nineteen or more wafers in the pipeline, the floor is {{PREFILL_405B_100K_S}} seconds if every
+                wafer worked on it at full efficiency in parallel, so call it under a second. That floor
+                doesn't by itself explain what people see. Cerebras published a {{TTFT_405B_MS}} ms time to
+                first token at a 1K prompt, which is fine; nobody published one at 100K. Users of the 480B
+                coding model on Hacker News reported a few seconds to first token on every call, which undid
+                much of the decode speed for agent loops that make many short calls, and Artificial Analysis
+                lists {{S_OSS_AA_TTFT}} seconds today for gpt-oss-120b, against a few tenths for the fast GPU
+                providers. Seconds against a sub-second floor means something else is in the way: filling a
+                pipeline of wafers one stage at a time, writing the prompt's cache out to the offload node,
+                queueing behind other users' prompts, or all three. I can't separate them from outside.
+            </p>
+            <p>
+                The strongest confirmation isn't a benchmark; it's a product decision. In March 2026 AWS
+                announced Cerebras on Bedrock in a "disaggregated" arrangement: AWS's own Trainium chips do
+                the prefill, the CS-3 does the decode, and the two are joined by EFA networking. Amazon's
+                announcement spells out the reasoning, that prefill is parallel and compute-heavy and decode
+                is serial and bandwidth-heavy, and pairs each with the hardware suited to it. The first
+                cloud to resell the wafer, in other words, chose not to use it for half the job, and Cerebras
+                agreed.
+            </p>
+
+            <h3>Batch: where the Pareto curve turns</h3>
+            <p>
+                In April 2026 a group at USC published measurements on a physical CS-3 they had access to,
+                alongside H100, MI300, SambaNova, Groq, Gaudi and TPU, using the vendor's own stack rather
+                than the inference service. Their headline result is the one this post has been circling: at
+                low batch sizes the CS-3 is on the Pareto frontier for both latency and energy per token,
+                and as batch size grows it falls off it, with the GPU and SambaNova systems taking over for
+                throughput-oriented serving. On Llama 3.1 8B at low batch they measured Cerebras at
+                {{PAPERS_XPU_LATENCY_VS_H100_PCT}}% of the H100's latency per token, a 4.4x advantage rather
+                than the 20x of the launch, though they were running the general-purpose appliance software
+                rather than the inference product, and they note that even batch-size scaling wasn't
+                supported on their setup.
+            </p>
+            <p>
+                Their power traces are the part I'd have paid for. The CS-3 idles at
+                {{PAPERS_XPU_IDLE_PCT_TDP}}% of its full power and runs decode at
+                {{PAPERS_XPU_DECODE_PCT_TDP}}%, against GPUs that idle at 20% and decode at half. A machine
+                that draws most of its power doing nothing has to be kept busy to be efficient, and they
+                compute the crossover: energy per token reaches parity with a 32-GPU H100 cluster at a
+                {{PAPERS_XPU_ENERGY_PARITY_DUTY_PCT}}% duty cycle. Below that, the wafer costs more per
+                token in electricity; above it, less. Combined with the batch result, the shape of the good
+                deployment is clear and narrow: many concurrent users, all wanting fast single-stream
+                speed, all with short-to-medium contexts, arriving steadily enough to keep the wafers warm.
+                Coding assistants and agent loops are that shape. Batch summarisation of a million
+                documents is not.
+            </p>
+
+            <h3>Memory that stopped growing</h3>
+            <p>
+                The generations chart said it: 18 GB, 40 GB, 44 GB across three process nodes. The whole
+                design rests on holding the model in memory that's physically next to the arithmetic, and
+                that memory is the one thing on the chip that doesn't shrink with the process anymore. Every
+                trick in the last section (4-bit storage, MoE, small-cache attention) is a way of fitting
+                more model into the same 44 GB. Cerebras's own roadmap acknowledges the ceiling: the 2027
+                system pairs the new rack with a next-generation wafer for speed, and the one after stacks
+                DRAM on the wafer for capacity. That second step is the interesting one; it says the pure
+                SRAM design has a horizon, and the company knows where it is.
+            </p>
+
+            <h3>The money, with assumptions stated</h3>
+            <p>
+                The economics come down to one question: how many users have to be on a set of wafers,
+                every hour, for the tokens to pay for the machine? Here's the arithmetic for the 70B on
+                four wafers at {{S_70B_OCT}} tokens a second per user. Assumptions: power at
+                {{WAFER_WAFER_POWER_KW_SEMI}} kW per wafer and ten cents a kilowatt-hour, hardware written off
+                over four years, and two prices for the hardware, the analyst's estimated bill of materials
+                of ${{BOM_K}}k per wafer including its rack and the Hacker News estimate of $2.5 million
+                list per system. Everything else (staff, buildings, networking, the draft model's own
+                wafers, the fact that no machine is busy every hour) is left out, so these are floors.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/breakeven.svg" alt="Two curves of concurrent users needed against price per million output tokens from 0.25 to 2 dollars. At the 450k BOM: 14 users at 0.60 and 7 at 1.20. At 2.5 million list: 65 users at 0.60 and 33 at 1.20." loading="lazy" decoding="async">
+                <figcaption>Concurrent users needed at full utilisation to cover hardware and power for Llama 70B on four wafers. Arithmetic on stated assumptions; change any of them in the repository and the curves move.</figcaption>
+            </figure>
+
+            <p>
+                At the launch price of ${{B_PRICE_70B_OUT_USD_PER_M}} per million output tokens and the BOM
+                estimate, the four wafers cost ${{HOURLY_BOM}} an hour to own and run and need
+                {{BE_060_BOM}} users on them at every moment to break even; at list price they need
+                {{BE_060_LIST}}. At $1.20 those halve. Given the "solid double digits" batch statement and
+                the KV arithmetic above, the BOM case looks reachable for short-context models and the list
+                case doesn't, which is consistent with Cerebras selling tokens from its own hardware at
+                cost rather than buying its hardware at list; the S-1 shows exactly that, a business that in
+                2025 was {{HW_SHARE_2025_PCT}}% hardware sales by revenue and by the second quarter of 2026
+                was {{CLOUD_SHARE_Q2_PCT}}% cloud, with cloud revenue up {{B_Q2_2026_CLOUD_GROWTH_PCT}}% in a
+                year. A commenter on Hacker News, moconnor, in 2024 did a version of this sum with harsher assumptions
+                and got a break-even batch of 420 and the conclusion that the token business couldn't work;
+                with the numbers available two years later, I get a much lower bar and a company that is
+                clearly betting the other way.
+            </p>
+            <p>
+                The rest of the money, briefly, because it frames the technical bets. Revenue was
+                ${{B_REV_2025_MUSD}} million in 2025, up {{B_REV_GROWTH_2025_PCT}}%, with a non-GAAP net loss
+                of ${{B_NONGAAP_LOSS_2025_MUSD}} million; a reported GAAP profit that year is a non-cash gain
+                on a G42 liability and not an operating result. {{B_UAE_SHARE_2025_PCT}}% of 2025 revenue came
+                from two customers in the UAE. OpenAI signed for {{B_OPENAI_MW}} megawatts of inference
+                capacity in January 2026 with an option to {{B_OPENAI_OPTION_GW}} gigawatts, a deal the
+                filings value above ${{B_OPENAI_VALUE_BUSD}} billion; at 25 kW per wafer that first tranche
+                is on the order of {{OPENAI_WAFERS_K}} thousand WSE-3 wafers, or about half that many of the
+                Turbo part at its doubled power. The company listed on Nasdaq on {{B_IPO_DATE_LONG}} at
+                ${{B_IPO_PRICE_USD}} a share, raising ${{B_IPO_RAISED_BUSD}} billion. By the June quarter,
+                remaining performance obligations were ${{B_Q2_2026_RPO_BUSD}} billion and
+                {{B_Q2_2026_MW_CONTRACTED}} megawatts of capacity were under contract, with a core gross margin
+                of {{B_Q2_2026_CORE_GM_PCT}}%. I include all that not because it's a finance post but because
+                "how may they have built it" has an answer in the filings too: with two related customers in one
+                country paying for most of the first three years, then a single very large one paying for
+                the next three. That is how a company affords to solve the latency problems in this post one at a
+                time, rack by rack.
+            </p>
+            <p>
+                Cerebras is the most extreme answer to the equation, but not the only one. Two others are
+                worth setting beside it, because the contrast says what's essential and what's a choice.
+            </p>

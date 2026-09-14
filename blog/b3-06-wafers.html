@@ -1,0 +1,83 @@
+            <h2>Bigger than a wafer</h2>
+            <p>
+                Forty-four gigabytes holds an 8B model at 16-bit with room to spare and nothing much
+                larger. Cerebras said on launch day that 20B models fit on one system and 70B "on as few as
+                four", which matches the arithmetic: {{BYTES_70B_GB}} GB at 16-bit needs four wafers even
+                with nothing else on them. Here is that arithmetic for every model in the timeline, at three
+                precisions, assuming {{HEADROOM_PCT}}% of each wafer is available for weights and the rest is
+                activations, cache and working buffers.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/wafers-per-model.svg" alt="Grouped bars of wafers needed at 16, 8 and 4-bit for seven models: Llama 8B 1/1/1, Llama 70B 4/2/1, gpt-oss-120b 7/4/2, Qwen3-235B 13/7/4, Llama 405B 22/11/6, Llama 4 Maverick 22/11/6, Kimi K2.6 54/27/14." loading="lazy" decoding="async">
+                <figcaption>Wafers needed just to hold the weights, computed from parameter counts. The two vendor-stated counts (8B on one, 70B on four) match the 16-bit column.</figcaption>
+            </figure>
+
+            <p>
+                Two things in that chart deserve a closer look. Llama 3.1 405B at 16-bit is
+                {{BYTES_405B_GB}} GB, which is {{FLOOR_405B_16}} wafers with no headroom at all and
+                {{WAFERS_405B_16}} with my {{HEADROOM_PCT}}% assumption. A Hacker News commenter with a chip-design
+                background, trsohmers, guessed twenty systems and twenty million dollars of hardware for
+                that one model; The Register reported "twelve CS-3s" from a launch-day briefing, before the
+                model was live. Twelve wafers hold {{TWELVE_WAFERS_GB}} GB, so that count and the "16-bit
+                weights, full accuracy" claim in the November press release cannot both be right; my reading
+                is that twelve was a projection and the model shipped at 16-bit on more wafers than that.
+                Cerebras has never said how many, and the arithmetic says at least nineteen.
+            </p>
+            <p>
+                The other is Kimi K2.6, a trillion parameters. At 16-bit that's {{BYTES_KIMI_16_TB}} TB and
+                {{WAFERS_KIMI_16}} wafers, which nobody would build for one model. At the 4-bit storage
+                Cerebras says it uses, it's {{WAFERS_KIMI_4}} wafers, still a rack row, and it explains why
+                the "no quantization" language quietly disappeared for the trillion-parameter models. It
+                also flips something from the last post. On my laptop a mixture-of-experts model was fast
+                because a token only reads the active experts, so the bytes per token fall. On a wafer the
+                weights are already in memory that's read in microseconds; the MoE's benefit isn't bandwidth
+                at all. It's that only {{KIMI_ACTIVE_B}}B of the trillion parameters do arithmetic per token,
+                so the compute stays small, while the full trillion still has to be resident, which is why
+                the wafer count is set by total parameters and not active ones. Same architecture, opposite
+                reason to like it.
+            </p>
+
+            <h3>What moves between wafers</h3>
+            <p>
+                When a model spans several wafers, Cerebras is explicit about the strategy: layers are split
+                across wafers as a pipeline, so each wafer holds a contiguous block of layers and only
+                activations cross the boundary. That's the right call and the reason is bandwidth of a very
+                different kind. A CS-3's connection to the outside world is Ethernet; the analyst estimate
+                is twelve 100 GbE ports, about {{WAFER_CS3_IO_GBS}} GB/s for the whole wafer. Tensor
+                parallelism across wafers, the way an 8-GPU box splits every layer, would need the
+                partial-sum reductions from the last section to cross that link every layer, and the link is
+                a hundred thousand times slower than the on-wafer fabric. A pipeline needs only the hidden
+                state to cross, once per wafer boundary per token: for the 70B that's {{ACT_70B_KB}} KB, and
+                at {{S_70B_OCT}} tokens a second that's {{ACT_70B_MBS}} MB/s, which is nothing.
+            </p>
+            <p>
+                What isn't nothing is the latency of that hop. Ethernet is tens of microseconds per
+                boundary, three boundaries for the 70B, more for the 405B, and it's paid on every token. The
+                2026 rack design attacks precisely this: three wafers in one cabinet with direct links and
+                a stated {{WAFER_CS4_W2W_LATENCY_US}} microsecond wafer-to-wafer latency, and
+                {{WAFER_CS4_IO_TBPS_RACK}} Tb/s of I/O per rack. You don't spend engineering on a two
+                microsecond link unless the tens of microseconds were showing up in your per-token time.
+                They were.
+            </p>
+            <p>
+                Mixture-of-experts adds one more constraint, and Cerebras's Hot Chips post names it: the
+                expert routing traffic, where each token's hidden state is sent to its chosen experts and the
+                results gathered back, is kept inside a wafer. So the experts of a given layer all live on the
+                same wafer, and the pipeline cut falls between layers, never between experts. For a model like
+                Kimi with {{WAFERS_KIMI_4}} wafers of experts, that means each wafer holds a few whole layers'
+                worth of expert tables and the token walks through the row.
+            </p>
+            <p>
+                One sentence in Cerebras's description of the pipeline deserves a pause: it says pipelining
+                doesn't reduce speed because at any moment all wafers are busy. For a single user that
+                can't be true; one user's token is on one wafer at a time, and the other wafers are waiting
+                for it. It's true when there are several users in flight, staggered so each wafer is working
+                on a different one, which is a perfectly ordinary way to run a pipeline and also a quiet
+                admission that the machine is not serving one user at a time. Keep that in mind for the
+                economics.
+            </p>
+            <p>
+                Now the central question. Four wafers, a line of {{CEIL_WSE3X4}} tokens a second, and a
+                reported {{S_70B_AUG}}. Where does the rest go?
+            </p>

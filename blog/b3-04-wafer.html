@@ -1,0 +1,98 @@
+            <h2>What a wafer is</h2>
+            <p>
+                A normal chip is one rectangle cut out of a 300 mm silicon wafer; an H100 die is about
+                814 mm². Cerebras doesn't cut. The WSE-3 is the largest square you can draw inside the
+                circle, {{WAFER_WSE3_AREA_MM2}} mm² on TSMC's 5 nm process, with {{WAFER_WSE3_TRANSISTORS_T}}
+                trillion transistors, {{WAFER_WSE3_CORES}} cores, and {{WAFER_WSE3_SRAM_GB}} GB of SRAM spread
+                among them. The spec sheet then says {{WAFER_WSE3_SRAM_BW_PBS}} PB/s of memory bandwidth,
+                {{WAFER_WSE3_FABRIC_BW_PBS}} PB/s of fabric bandwidth and {{WAFER_WSE3_SPARSE_PFLOPS}}
+                PFLOPS of compute. Numbers that size stop meaning anything, so here they are rebuilt from
+                the core up, using what Cerebras has published about the core and what the two papers
+                confirmed by running on it.
+            </p>
+
+            <h3>One core</h3>
+            <p>
+                Each core has {{WAFER_CORE_SRAM_KB}} KB of SRAM, arranged as {{WAFER_CORE_BANKS}} banks of 6 KB, each 32 bits wide, so that in
+                one clock it can do two 64-bit reads and one 64-bit write. Beside the memory is a datapath
+                that in the WSE-3 is {{WAFER_CORE_SIMD_WSE3}} FP16 multiply-accumulates wide (the WSE-2 was
+                four), and a router with five 32-bit ports: north, south, east, west and the core itself.
+                Messages are 32-bit "wavelets", one 16-bit number plus 16 bits of control, and a wavelet
+                crosses from one core to its neighbour in a single clock. Each router holds
+                {{WAFER_ROUTER_COLORS}} static routes, set up before the program runs, so there's no routing
+                table lookup in the data path. The clock, published for the WSE-2 and by all the arithmetic
+                unchanged for the WSE-3, is {{WAFER_CORE_CLOCK_GHZ_WSE2}} GHz. Half the core's area is
+                memory and half is logic.
+            </p>
+            <p>
+                Two more things about the core that matter later. Execution is dataflow: a core doesn't run
+                a program counter through a loop, it sits idle until a wavelet arrives on a colour it has a
+                handler for, and then runs that handler. And the sender filters zeros: a zero activation or
+                weight is never put on the fabric, so the receiver never spends a cycle on it. That is the
+                mechanism behind the "sparse" in the FLOPS figure, and it's why the number is quoted the way it
+                is.
+            </p>
+
+            <h3>The spec sheet, re-derived</h3>
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Published</th>
+                            <th>From the core up</th>
+                            <th>Reads as</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>{{WAFER_WSE3_SRAM_GB}} GB SRAM</td><td>{{WAFER_WSE3_CORES}} cores × {{WAFER_CORE_SRAM_KB}} KB = {{SRAM_FROM_CORES}} GB</td><td>Exact. The memory is nothing but the cores' own scratch space, added up.</td></tr>
+                        <tr><td>{{WAFER_WSE3_SRAM_BW_PBS}} PB/s memory bandwidth</td><td>{{WAFER_WSE3_SRAM_BW_PBS}} PB/s ÷ ({{WAFER_WSE3_CORES}} cores × {{WAFER_CORE_CLOCK_GHZ_WSE2}} GHz) = {{BYTES_PER_CORE_CYCLE}} bytes per core per clock</td><td>Consistent with two 8-byte reads and one 8-byte write per cycle, less about an eighth for spare cores and stalls. It's not a bus; it's a million tiny memories each doing what a CPU's L1 does.</td></tr>
+                        <tr><td>{{WAFER_WSE3_SPARSE_PFLOPS}} PFLOPS</td><td>{{WAFER_WSE3_CORES}} × {{WAFER_CORE_SIMD_WSE3}} FMAC × 2 × {{WAFER_CORE_CLOCK_GHZ_WSE2}} GHz = {{DENSE_FROM_CORES}} PFLOPS dense</td><td>The headline is {{SPARSE_TO_DENSE}}x the dense figure, meaning it assumes the zero-skipping fires on seven of every eight operands. On a dense transformer decode it doesn't. The dense number, {{WAFER_WSE3_DENSE_PFLOPS}} PFLOPS by an analyst's estimate and {{DENSE_FROM_CORES}} by this arithmetic, is the one to use. Still about eight H100s' worth.</td></tr>
+                        <tr><td>{{WAFER_WSE3_FABRIC_BW_PBS}} PB/s fabric</td><td>Also quoted as 214 Pb/s (bits, not bytes)</td><td>Same number; the units differ by eight and you will see both. One of the survey papers I read reports the memory bandwidth as "220 TB/s", which is the fabric figure in the wrong unit and a hundred times too small. Units are a real hazard here.</td></tr>
+                        <tr><td>"7,000x an H100"</td><td>{{WAFER_WSE3_SRAM_BW_PBS}} PB/s ÷ {{GPU_H100_BW_TBS}} TB/s = {{BW_RATIO_H100}}x</td><td>Right to within rounding, and the least useful number on the sheet, for reasons the next three sections are about.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>The mesh</h3>
+            <p>
+                {{WAFER_WSE3_CORES}} cores in a rectangle is about {{WAFER_SIDE}} on a side. At one hop per
+                clock, a wavelet takes {{WAFER_SIDE}} clocks to cross the wafer, which at
+                {{WAFER_CORE_CLOCK_GHZ_WSE2}} GHz is {{WAFER_CROSS_US}} microseconds. Write that number down;
+                it comes back. A signal on a plain wire would cross the same 215 mm in about a
+                nanosecond, so the mesh is nearly a thousand times slower than the silicon underneath it;
+                that's the price of a router at every core. The fabric is a mesh, not a crossbar: a core can only talk
+                to its four neighbours, and anything further away goes hop by hop through cores in between,
+                each of which has to have been told in advance to forward that colour. There is no shared
+                memory anywhere on the wafer. A weight that lives in one core's 48 KB is not addressable by
+                any other core; it has to be sent.
+            </p>
+            <p>
+                The wafer is 84 dies' worth of silicon with the scribe lines between them wired across, over
+                a million wires crossing them in total. Manufacturing defects that would kill a normal chip are handled
+                by spare cores and links: the fabric routes around a dead core and presents software with a
+                uniform, slightly smaller rectangle. The WaferLLM authors, citing the vendor, put usable area at
+                {{WAFER_FUNCTIONAL_AREA_PCT}}% of the wafer, and after two years on a WSE-2 reported no
+                reliability trouble worth writing down. Yield was the thing everyone said would make this
+                impossible in 2019; it evidently didn't.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/generations.svg" alt="Bars of on-wafer SRAM by generation: WSE-1 18 GB in 2019 at 16 nm, WSE-2 40 GB in 2021 at 7 nm, WSE-3 44 GB in 2024 at 5 nm, WSE-3 Turbo 44 GB in 2026. Transistor counts 1.2, 2.6, 4, 4 trillion." loading="lazy" decoding="async">
+                <figcaption>Vendor figures per generation. Logic transistors went 1.2 to 2.6 to 4 trillion; SRAM went 18 to 40 to 44 GB. The 2026 Turbo part raises clocks and leaves capacity where it was.</figcaption>
+            </figure>
+
+            <p>
+                One last thing the generations chart shows, which is the shape of the next few years for
+                this design. Logic keeps shrinking with each process node. SRAM cells have nearly stopped
+                shrinking, which is a property of physics rather than of Cerebras; every chip company is
+                living with it. From 7 nm to 5 nm the wafer gained 50% more transistors and 10% more memory.
+                The 2026 refresh doubled the clock, and with it the bandwidth and compute, without touching
+                the 44 GB. And the roadmap Cerebras showed at Hot Chips this August puts stacked DRAM on top
+                of the wafer for the generation after next, which is as clear a statement as you'll get
+                that SRAM alone won't carry the capacity story much further.
+            </p>
+            <p>
+                So: a million small cores, each with its own 48 KB, no shared memory, a mesh that crosses in
+                a microsecond, and zero-skipping in the wiring. How do you put an 80-layer transformer on
+                that?
+            </p>

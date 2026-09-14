@@ -1,6 +1,6 @@
 # ggml-inference-lab
 
-Scripts, raw results and blog source for two posts:
+Scripts, raw results and blog source for three posts:
 
 - [Getting the most tokens per second out of one laptop with llama.cpp](https://inboxpraveen.github.io/blogs/blog-1.html):
   Qwen3-0.6B (and Qwen3-8B) on an i7-14650HX + RTX 5060 Laptop, every llama.cpp setting measured for
@@ -9,6 +9,11 @@ Scripts, raw results and blog source for two posts:
   over to other machines and other architectures. Six small models (dense, MoE, sliding-window, two hybrids,
   pure SSM) plus T5 and an embedding model on the same tests, a pre-check script, a ten-minute KLD recipe,
   and the instruction-set versus quant experiment.
+- [Where the bandwidth line ends](https://inboxpraveen.github.io/blogs/blog-3.html): Cerebras read from
+  the outside. No measurements of mine; instead `results/cerebras_sources.json` holds every published number
+  with its date, source and kind (vendor / independent / community), `scripts/wafer_model.py` does the
+  arithmetic (ceilings, wafers per model, KV bytes, the per-layer latency budget, break-even users), and
+  `charts3.py` / `build_blog3.py` render the charts and fill the prose from those two files only.
 
 Nothing here needs a compiler. The prebuilt llama.cpp release zips and a conda env with
 `numpy`, `cffi`, `matplotlib`, `pillow` and `gguf` are enough.
@@ -18,12 +23,14 @@ Nothing here needs a compiler. The prebuilt llama.cpp release zips and a conda e
 ```
 scripts/        every measurement, one script each (bench.sh wraps llama-bench and tags rows)
                 post 2: precheck.py, zoo.sh, zoo_meta.py, oldcpu.sh, kld_convergence.py, charts2.py, build_blog2.py
+                post 3: wafer_model.py, charts3.py, header_image3.py, build_blog3.py (inputs: results/cerebras_sources.json)
 src/            llamabind.py (cffi ABI binding to llama.dll), driver.py (Engine + decode loops)
 results/        bench.jsonl, server.jsonl, driver.jsonl, kld_table.json, load_modes.json,
                 membw.txt, charts/ and charts2/ (SVG+PNG), kld/*.txt (per-variant llama-perplexity output),
-                zoo_meta.json, kld_convergence.json, precheck-*.txt, t5-*.txt
+                zoo_meta.json, kld_convergence.json, precheck-*.txt, t5-*.txt, cerebras_sources.json, charts3/
 research/       notes on DLL selection, runtime options, hardware ceilings, KLD methodology
-blog/           post sources: blog-1.src.html + body-*.html (scripts/fill_blog.py), blog-2.src.html + b2-*.html (scripts/build_blog2.py)
+blog/           post sources: blog-1.src.html + body-*.html (scripts/fill_blog.py), blog-2.src.html + b2-*.html (scripts/build_blog2.py),
+                blog-3.src.html + b3-*.html (scripts/build_blog3.py)
 ```
 
 Ignored by git because of size (see `.gitignore`): `models/` (18 GB of GGUF variants),
@@ -59,6 +66,10 @@ bash scripts/oldcpu.sh                     # six quants under sse42 / sandybridg
 python scripts/kld_convergence.py          # running KLD means at 5/20/40/200 chunks from the existing logs
 python scripts/charts2.py ceilings arch kv moe zoo depth depthcuda battery oldcpu
 python scripts/build_blog2.py
+
+# post 3: no hardware needed; edit results/cerebras_sources.json and rerun
+python scripts/wafer_model.py                # prints every derived number
+python scripts/charts3.py && python scripts/header_image3.py && python scripts/build_blog3.py
 ```
 
 Traps met on the way: `llama-bench` asserts on encoder-decoder models (use `llama-completion`); `--chunks` is

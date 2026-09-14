@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where the bandwidth line ends: how Cerebras gets to 2,000 tokens a second, worked out from the outside | Praveen Kumar</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="A from-the-outside engineering read of Cerebras: every published speed dated and sourced, the wafer rebuilt from the core up, why the bandwidth line predicts 600,000 tokens a second and they get 2,000, the microseconds a layer really costs, what the SRAM design gives up, and what carries back to a laptop.">
+    <meta name="keywords" content="Cerebras, Wafer-Scale Engine, WSE-3, CS-3, CS-4, SRAM, Inference, Tokens per Second, Speculative Decoding, Groq, NVIDIA Blackwell, Memory Bandwidth, Latency, KV Cache, Mixture of Experts, Inference Engineering, Hardware">
+    <meta name="author" content="Praveen Kumar">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Where the bandwidth line ends: how Cerebras gets to 2,000 tokens a second, worked out from the outside">
+    <meta property="og:description" content="The bandwidth line predicts 600,000 tokens a second for four wafers and Cerebras gets 2,000. Where the rest goes, worked out from public numbers.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://inboxpraveen.github.io/blogs/blog-3.html">
+    <meta property="og:image" content="https://inboxpraveen.github.io/blogs/resources/blog-3/Header.png">
+    <meta property="og:image:alt" content="Bandwidth divided by bytes per token for a laptop, eight H100s, eight B200s and four Cerebras wafers on a log scale, with reported speeds marked">
+    <meta property="og:site_name" content="Praveen Kumar Portfolio">
+    <meta property="article:published_time" content="2026-09-14">
+    <meta property="article:author" content="Praveen Kumar">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Where the bandwidth line ends: how Cerebras gets to 2,000 tokens a second, worked out from the outside">
+    <meta name="twitter:description" content="Every Cerebras speed claim dated and sourced, the wafer rebuilt from the core up, and the arithmetic that says why a layer costs microseconds rather than bytes.">
+    <meta name="twitter:image" content="https://inboxpraveen.github.io/blogs/resources/blog-3/Header.png">
+    <meta name="twitter:image:alt" content="Bandwidth divided by bytes per token for a laptop, eight H100s, eight B200s and four Cerebras wafers on a log scale, with reported speeds marked">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://inboxpraveen.github.io/blogs/blog-3.html">
+
+    <link rel="icon" type="image/x-icon" href="../assests/favicon.ico">
+    <link rel="stylesheet" href="../index.css">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": "Where the bandwidth line ends: how Cerebras gets to 2,000 tokens a second, worked out from the outside",
+      "description": "An engineering read of Cerebras from public sources: dated speed claims, the wafer from the core up, the per-layer latency arithmetic, what the SRAM design gives up, and what carries back to ordinary hardware.",
+      "datePublished": "2026-09-14",
+      "dateModified": "2026-09-14",
+      "author": { "@type": "Person", "name": "Praveen Kumar", "url": "https://inboxpraveen.github.io/" },
+      "image": "https://inboxpraveen.github.io/blogs/resources/blog-3/Header.png",
+      "url": "https://inboxpraveen.github.io/blogs/blog-3.html",
+      "keywords": ["Cerebras", "wafer-scale", "SRAM", "inference", "speculative decoding", "memory bandwidth", "latency", "Groq", "NVIDIA Blackwell", "inference engineering"]
+    }
+    </script>
+</head>
+<body>
+
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" data-progress></div></div>
+
+    <!-- Navigation -->
+    <nav class="site-nav">
+        <div class="nav-container">
+            <a href="../index.html" class="logo" aria-label="Praveen Kumar, home">PK</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../all-projects.html">Projects</a></li>
+                <li><a href="../all-blogs.html" aria-current="page">Blogs</a></li>
+                <li><a href="../about.html">About</a></li>
+                <li><a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            </ul>
+            <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks">
+                <span class="bars"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Blog post 3 -->
+    <main id="main" class="page-container active">
+        <div class="page-header">
+            <div class="container">
+                <a href="../all-blogs.html" class="back-button">&larr; Back to Blog</a>
+                <h1 class="page-title">Where the bandwidth line ends: how Cerebras gets to 2,000 tokens a second, worked out from the outside</h1>
+                <div class="page-meta">
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>
+                        <span>Published: 14 September 2026</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg></span>
+                        <span data-read-time>{{READ_TIME}} min read</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                        <span>{{SOURCE_COUNT}} dated sources &bull; arithmetic in the repo</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-tag"></use></svg></span>
+                        <span>Inference engineering &bull; Hardware &bull; Cerebras &bull; Python</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="toc" data-toc aria-label="On this page">
+            <p class="toc-label">On this page</p>
+        </nav>
+
+        <div class="content-section">
+{{BODY}}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <p class="footer-note">
+                    &copy; <span data-year>2026</span> Praveen Kumar &middot;
+                    Static HTML, one stylesheet, no build step &mdash;
+                    <a href="https://github.com/inboxpraveen/inboxpraveen.github.io" target="_blank" rel="noopener noreferrer">source on GitHub</a>
+                </p>
+                <div class="footer-social">
+                    <a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                        <svg class="icon" aria-hidden="true"><use href="#i-github"></use></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/in/praveen-kumar-inbox/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-linkedin"></use></svg>
+                    </a>
+                    <a href="https://x.com/InboxPraveen" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                    </a>
+                    <a href="mailto:inboxpraveen.17@gmail.com" aria-label="Email">
+                        <svg class="icon" aria-hidden="true"><use href="#i-mail"></use></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <button class="back-to-top" type="button" data-back-to-top aria-label="Back to top">
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-up"></use></svg>
+    </button>
+
+    <script src="../site.js" defer></script>
+
+</body>
+</html>

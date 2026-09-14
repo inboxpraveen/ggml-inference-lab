@@ -1,0 +1,976 @@
+{
+  "_note": "Every number used in blog-3. kind: vendor (Cerebras or NVIDIA statement), independent (third-party measurement, filing or paper), community (forum or analyst estimate), computed (arithmetic in build_blog3.py or charts3.py from the entries here). Dates are when the number was published.",
+  "wafer": {
+    "wse3_cores": {
+      "v": 900000,
+      "unit": "cores",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "wse3_sram_gb": {
+      "v": 44,
+      "unit": "GB",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "wse3_sram_bw_pbs": {
+      "v": 21,
+      "unit": "PB/s",
+      "src": "https://www.cerebras.ai/blog/introducing-cerebras-inference-ai-at-instant-speed",
+      "date": "2024-08-27",
+      "kind": "vendor"
+    },
+    "wse3_fabric_bw_pbs": {
+      "v": 27,
+      "unit": "PB/s",
+      "src": "https://www.cerebras.ai/blog/cerebras-cs3",
+      "date": "2024-03-13",
+      "kind": "vendor",
+      "note": "quoted as 214 Pb/s elsewhere; same number in bits"
+    },
+    "wse3_sparse_pflops": {
+      "v": 125,
+      "unit": "PFLOPS FP16 sparse",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "wse3_dense_pflops": {
+      "v": 15.6,
+      "unit": "PFLOPS FP16 dense",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community",
+      "note": "SemiAnalysis; consistent with 900,000 cores x 8 FMAC x 2 x 1.1 GHz = 15.8"
+    },
+    "wse3_transistors_t": {
+      "v": 4.0,
+      "unit": "trillion",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "wse3_area_mm2": {
+      "v": 46225,
+      "unit": "mm2",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "wse3_process": {
+      "v": "TSMC 5 nm",
+      "src": "https://spectrum.ieee.org/cerebras-chip-cs3",
+      "date": "2024-03-13",
+      "kind": "vendor"
+    },
+    "core_sram_kb": {
+      "v": 48,
+      "unit": "KB",
+      "src": "https://www.cerebras.ai/blog/cerebras-architecture-deep-dive-first-look-inside-the-hw-sw-co-design-for-deep-learning",
+      "date": "2022",
+      "kind": "vendor"
+    },
+    "core_banks": {
+      "v": 8,
+      "unit": "banks of 6 KB, 32-bit wide",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2024-09",
+      "kind": "independent"
+    },
+    "core_reads_per_cycle": {
+      "v": "two 64-bit reads and one 64-bit write",
+      "src": "https://www.cerebras.ai/blog/cerebras-architecture-deep-dive-first-look-inside-the-hw-sw-co-design-for-deep-learning",
+      "date": "2022",
+      "kind": "vendor"
+    },
+    "core_simd_wse3": {
+      "v": 8,
+      "unit": "FP16 lanes (FMAC)",
+      "src": "https://www.cerebras.ai/blog/cerebras-cs3",
+      "date": "2024-03-13",
+      "kind": "vendor",
+      "note": "WSE-2 was 4-wide"
+    },
+    "core_clock_ghz_wse2": {
+      "v": 1.1,
+      "unit": "GHz",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent",
+      "note": "WSE-2; WSE-3 clock not published, implied about 1.1 by 125/8 = 15.6 PF dense"
+    },
+    "router_ports": {
+      "v": "5-port, 32-bit, one hop per clock",
+      "src": "https://www.cerebras.ai/blog/cerebras-architecture-deep-dive-first-look-inside-the-hw-sw-co-design-for-deep-learning",
+      "date": "2022",
+      "kind": "vendor"
+    },
+    "router_colors": {
+      "v": 24,
+      "unit": "static routes per router",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2024-09",
+      "kind": "independent"
+    },
+    "wavelet_bits": {
+      "v": 32,
+      "unit": "bits (16 data + 16 control)",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2024-09",
+      "kind": "independent"
+    },
+    "sram_area_share_pct": {
+      "v": 50,
+      "unit": "% of core area",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2024-09",
+      "kind": "independent"
+    },
+    "wse1_sram_gb": {
+      "v": 18,
+      "unit": "GB",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2019",
+      "kind": "vendor"
+    },
+    "wse2_sram_gb": {
+      "v": 40,
+      "unit": "GB",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2021",
+      "kind": "vendor"
+    },
+    "wse1_cores": {
+      "v": 400000,
+      "unit": "cores",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2019",
+      "kind": "vendor"
+    },
+    "wse2_cores": {
+      "v": 850000,
+      "unit": "cores",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2021",
+      "kind": "vendor"
+    },
+    "wse1_transistors_t": {
+      "v": 1.2,
+      "unit": "trillion",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2019",
+      "kind": "vendor"
+    },
+    "wse2_transistors_t": {
+      "v": 2.6,
+      "unit": "trillion",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2021",
+      "kind": "vendor"
+    },
+    "wse2_sram_bw_pbs": {
+      "v": 20,
+      "unit": "PB/s",
+      "src": "https://arxiv.org/abs/2409.00287",
+      "date": "2021",
+      "kind": "vendor"
+    },
+    "functional_area_pct": {
+      "v": 93,
+      "unit": "% functional wafer area",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent",
+      "note": "reported via WaferLLM citing the vendor"
+    },
+    "cs3_power_kw": {
+      "v": 23,
+      "unit": "kW per system",
+      "src": "https://portal.neocortex.psc.edu/docs/CS-3/system-specifications.html",
+      "date": "2024",
+      "kind": "independent"
+    },
+    "wafer_power_kw_semi": {
+      "v": 25,
+      "unit": "kW",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community"
+    },
+    "cs3_io_gbs": {
+      "v": 150,
+      "unit": "GB/s per wafer (12 x 100GbE)",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community"
+    },
+    "kv_offload_tb": {
+      "v": 6,
+      "unit": "TB DDR5 per wafer rack for KV offload",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community"
+    },
+    "bom_per_wafer_rack_usd": {
+      "v": 450000,
+      "unit": "USD",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community"
+    },
+    "list_price_per_system_usd": {
+      "v": 2500000,
+      "unit": "USD",
+      "src": "https://news.ycombinator.com/item?id=42178761",
+      "date": "2024-11",
+      "kind": "community",
+      "note": "trsohmers estimate on HN"
+    },
+    "wse3t_sram_bw_pbs": {
+      "v": 43.2,
+      "unit": "PB/s",
+      "src": "https://www.servethehome.com/cerebras-intros-faster-wse-3-turbo-processor-and-first-rack-scale-cs-4-system/",
+      "date": "2026-08-18",
+      "kind": "vendor"
+    },
+    "wse3t_fabric_bw_pbs": {
+      "v": 53.5,
+      "unit": "PB/s",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "date": "2026-08-25",
+      "kind": "vendor"
+    },
+    "wse3t_sparse_pflops": {
+      "v": 250,
+      "unit": "PFLOPS FP16 sparse",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2026-08-18",
+      "kind": "vendor"
+    },
+    "cs4_wafers": {
+      "v": 3,
+      "unit": "WSE-3T per rack",
+      "src": "https://www.cerebras.ai/chip",
+      "date": "2026-08-18",
+      "kind": "vendor"
+    },
+    "cs4_w2w_latency_us": {
+      "v": 2,
+      "unit": "microseconds",
+      "src": "https://www.servethehome.com/cerebras-intros-faster-wse-3-turbo-processor-and-first-rack-scale-cs-4-system/",
+      "date": "2026-08-18",
+      "kind": "vendor"
+    },
+    "cs4_io_tbps_rack": {
+      "v": 7.2,
+      "unit": "Tb/s per rack",
+      "src": "https://www.globenewswire.com/news-release/2026/08/19/3347356/0/en/cerebras-unveils-cs-4-up-to-30-times-faster-than-gpu-based-solutions.html",
+      "date": "2026-08-19",
+      "kind": "vendor"
+    },
+    "cs4_power_converter_mm": {
+      "v": 0.5,
+      "unit": "mm from wafer (GPUs about 50)",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "date": "2026-08-25",
+      "kind": "vendor"
+    },
+    "cs5_target_tps_open": {
+      "v": 10000,
+      "unit": "tok/s per user, gpt-oss-120b class, 2027",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "date": "2026-08-25",
+      "kind": "vendor"
+    },
+    "cs5_target_tps_frontier": {
+      "v": 5000,
+      "unit": "tok/s per user, trillion-parameter, 2027",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "date": "2026-08-25",
+      "kind": "vendor"
+    },
+    "cs5_target_tps_per_mw": {
+      "v": 3000000,
+      "unit": "tok/s per MW",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "date": "2026-08-25",
+      "kind": "vendor"
+    }
+  },
+  "gpu": {
+    "h100_bw_tbs": {
+      "v": 3.35,
+      "unit": "TB/s",
+      "src": "https://www.nvidia.com/en-us/data-center/h100/",
+      "date": "2022",
+      "kind": "vendor"
+    },
+    "b200_bw_tbs": {
+      "v": 8.0,
+      "unit": "TB/s",
+      "src": "https://www.nvidia.com/en-us/data-center/dgx-b200/",
+      "date": "2024",
+      "kind": "vendor"
+    },
+    "h100_hbm_gb": {
+      "v": 80,
+      "unit": "GB",
+      "src": "https://www.nvidia.com/en-us/data-center/h100/",
+      "date": "2022",
+      "kind": "vendor"
+    },
+    "b200_hbm_gb": {
+      "v": 180,
+      "unit": "GB",
+      "src": "https://www.nvidia.com/en-us/data-center/dgx-b200/",
+      "date": "2024",
+      "kind": "vendor"
+    },
+    "rtx5060_bw_gbs": {
+      "v": 384,
+      "unit": "GB/s",
+      "src": "blog-2",
+      "date": "2026-09",
+      "kind": "vendor"
+    },
+    "laptop_bw_gbs": {
+      "v": 34,
+      "unit": "GB/s",
+      "src": "blog-2 (measured streaming and llama-bench)",
+      "date": "2026-09",
+      "kind": "independent"
+    },
+    "groq_sram_mb": {
+      "v": 230,
+      "unit": "MB per LPU",
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor"
+    },
+    "groq_bw_tbs": {
+      "v": 80,
+      "unit": "TB/s per LPU",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "groq_chips_70b": {
+      "v": 576,
+      "unit": "LPUs for Llama 70B",
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "community"
+    },
+    "nvidia_groq_deal_usd_b": {
+      "v": 20,
+      "unit": "USD billion",
+      "src": "https://www.cnbc.com/2025/12/24/nvidia-buying-ai-chip-startup-groq-for-about-20-billion-biggest-deal.html",
+      "date": "2025-12-24",
+      "kind": "independent"
+    }
+  },
+  "speeds": [
+    {
+      "model": "Llama 3.1 8B",
+      "params_b": 8,
+      "active_b": 8,
+      "layers": 32,
+      "tps": 1800,
+      "who": "Cerebras",
+      "date": "2024-08-27",
+      "src": "https://www.cerebras.ai/blog/introducing-cerebras-inference-ai-at-instant-speed",
+      "kind": "vendor",
+      "spec": false,
+      "wafers": 1,
+      "note": "16-bit weights"
+    },
+    {
+      "model": "Llama 3.1 70B",
+      "params_b": 70,
+      "active_b": 70,
+      "layers": 80,
+      "tps": 450,
+      "who": "Cerebras",
+      "date": "2024-08-27",
+      "src": "https://www.cerebras.ai/blog/introducing-cerebras-inference-ai-at-instant-speed",
+      "kind": "vendor",
+      "spec": false,
+      "wafers": 4,
+      "note": "16-bit weights, four CS-3"
+    },
+    {
+      "model": "Llama 3.1 70B",
+      "params_b": 70,
+      "active_b": 70,
+      "layers": 80,
+      "tps": 2100,
+      "who": "Cerebras",
+      "date": "2024-10-24",
+      "src": "https://www.cerebras.ai/blog/cerebras-inference-3x-faster",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": 4,
+      "note": "speculative decoding introduced; kernels rewritten; plus or minus 20%"
+    },
+    {
+      "model": "Llama 3.1 405B",
+      "params_b": 405,
+      "active_b": 405,
+      "layers": 126,
+      "tps": 969,
+      "who": "Cerebras",
+      "date": "2024-11-18",
+      "src": "https://www.cerebras.ai/blog/llama-405b-inference",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null,
+      "note": "16-bit weights, 240 ms TTFT at 1K prompt, 539 tok/s at 100K context; system count not stated"
+    },
+    {
+      "model": "DeepSeek R1 Distill 70B",
+      "params_b": 70,
+      "active_b": 70,
+      "layers": 80,
+      "tps": 1500,
+      "who": "Cerebras",
+      "date": "2025-01-30",
+      "src": "https://www.cerebras.ai/press-release/cerebras-launches-worlds-fastest-deepseek-r1-distill-llama-70b-inference",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": 4
+    },
+    {
+      "model": "Llama 4 Scout",
+      "params_b": 109,
+      "active_b": 17,
+      "layers": 48,
+      "tps": 2600,
+      "who": "Cerebras",
+      "date": "2025-04-09",
+      "src": "https://www.cerebras.ai/press-release/llama4PR",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null
+    },
+    {
+      "model": "Llama 4 Maverick",
+      "params_b": 400,
+      "active_b": 17,
+      "layers": 48,
+      "tps": 2522,
+      "who": "Cerebras",
+      "date": "2025-05-28",
+      "src": "https://www.cerebras.ai/press-release/maverick",
+      "kind": "independent",
+      "spec": true,
+      "wafers": null,
+      "note": "Artificial Analysis measurement"
+    },
+    {
+      "model": "Llama 4 Maverick",
+      "params_b": 400,
+      "active_b": 17,
+      "layers": 48,
+      "tps": 1038,
+      "who": "NVIDIA DGX B200",
+      "date": "2025-05-22",
+      "src": "https://developer.nvidia.com/blog/blackwell-breaks-the-1000-tps-user-barrier-with-metas-llama-4-maverick",
+      "kind": "independent",
+      "spec": true,
+      "wafers": null,
+      "note": "8 GPUs TP8, FP8, EAGLE-3 draft length 3; Artificial Analysis"
+    },
+    {
+      "model": "Qwen3-235B-A22B",
+      "params_b": 235,
+      "active_b": 22,
+      "layers": 94,
+      "tps": 1500,
+      "who": "Cerebras",
+      "date": "2025-07-08",
+      "src": "https://www.businesswire.com/news/home/20250708330186/en",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null
+    },
+    {
+      "model": "Qwen3 Coder 480B",
+      "params_b": 480,
+      "active_b": 35,
+      "layers": 62,
+      "tps": 2000,
+      "who": "Cerebras",
+      "date": "2025-08-01",
+      "src": "https://www.cerebras.ai/blog/qwen3-coder-480b-is-live-on-cerebras",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null
+    },
+    {
+      "model": "gpt-oss-120b",
+      "params_b": 117,
+      "active_b": 5.1,
+      "layers": 36,
+      "tps": 3000,
+      "who": "Cerebras",
+      "date": "2025-08-05",
+      "src": "https://www.cerebras.ai/blog/blackwell-vs-cerebras",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null
+    },
+    {
+      "model": "gpt-oss-120b",
+      "params_b": 117,
+      "active_b": 5.1,
+      "layers": 36,
+      "tps": 650,
+      "who": "NVIDIA GB200 (Baseten)",
+      "date": "2025-08",
+      "src": "https://www.cerebras.ai/blog/blackwell-vs-cerebras",
+      "kind": "community",
+      "spec": true,
+      "wafers": null,
+      "note": "8 x GB200, TP8, TensorRT-LLM, EAGLE-3; as cited by Cerebras"
+    },
+    {
+      "model": "GPT-5.3-Codex-Spark",
+      "params_b": null,
+      "active_b": null,
+      "layers": null,
+      "tps": 1000,
+      "who": "Cerebras (OpenAI)",
+      "date": "2026-02-12",
+      "src": "https://openai.com/index/introducing-gpt-5-3-codex-spark/",
+      "kind": "vendor",
+      "spec": null,
+      "wafers": null,
+      "note": "size undisclosed"
+    },
+    {
+      "model": "Kimi K2.6",
+      "params_b": 1000,
+      "active_b": 32,
+      "layers": 61,
+      "tps": 981,
+      "who": "Cerebras",
+      "date": "2026-05-06",
+      "src": "https://www.cerebras.ai/blog/cerebras-kimi-k2-Enterprise",
+      "kind": "independent",
+      "spec": true,
+      "wafers": null,
+      "note": "Artificial Analysis, private endpoint; 4-bit weight storage, 16-bit compute"
+    },
+    {
+      "model": "gpt-oss-120b",
+      "params_b": 117,
+      "active_b": 5.1,
+      "layers": 36,
+      "tps": 4400,
+      "who": "Cerebras CS-4",
+      "date": "2026-08-18",
+      "src": "https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026",
+      "kind": "vendor",
+      "spec": true,
+      "wafers": null,
+      "note": "Hot Chips 2026 demo"
+    },
+    {
+      "model": "gpt-oss-120b",
+      "params_b": 117,
+      "active_b": 5.1,
+      "layers": 36,
+      "tps": 1684,
+      "who": "Cerebras public API",
+      "date": "2026-09-14",
+      "src": "https://artificialanalysis.ai/providers/cerebras",
+      "kind": "independent",
+      "spec": true,
+      "wafers": null,
+      "note": "Artificial Analysis public endpoint, high reasoning; TTFT 1.70 s"
+    }
+  ],
+  "gpu_baselines_2024": {
+    "h100_8b_tps": {
+      "v": 242,
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor",
+      "note": "GPU cloud figure as cited by Cerebras"
+    },
+    "h100_70b_tps": {
+      "v": 128,
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor",
+      "note": "GPU cloud figure as cited by Cerebras"
+    }
+  },
+  "papers": {
+    "waferllm_8b_decode_tps": {
+      "v": 2700,
+      "unit": "tok/s, LLaMA3-8B on WSE-2, 420x420 cores",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_gemv_speedup_a100": {
+      "v": 606,
+      "unit": "x over one A100 (GEMV)",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_e2e_speedup": {
+      "v": "10 to 20",
+      "unit": "x over A100 cluster with SGLang (end to end)",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_comm_share_pct": {
+      "v": 90,
+      "unit": "% of GEMV time in communication at large core counts",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_pipeline_underuse": {
+      "v": 5,
+      "unit": "x underutilization from pipeline bubbles (up to)",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_meshgemv_vs_vendor": {
+      "v": 4.6,
+      "unit": "x over Cerebras baseline GEMV",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "waferllm_kv_capacity": {
+      "v": "360 to 385",
+      "unit": "x more tokens with shift-based KV cache",
+      "src": "https://arxiv.org/abs/2502.04563",
+      "date": "2025-05",
+      "kind": "independent"
+    },
+    "xpu_idle_pct_tdp": {
+      "v": 80,
+      "unit": "% of TDP idle (CS-3)",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "xpu_decode_pct_tdp": {
+      "v": 100,
+      "unit": "% of TDP during decode (CS-3)",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "xpu_latency_vs_h100_pct": {
+      "v": 22.89,
+      "unit": "% of H100 latency per token, Llama 3.1 8B, low batch",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "xpu_energy_parity_duty_pct": {
+      "v": 34,
+      "unit": "% duty cycle for energy-per-token parity with a 32-GPU H100 cluster",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "xpu_comm_energy_vs_h100": {
+      "v": 34454,
+      "unit": "x less energy per byte over 161 mm than H100 NVLink",
+      "src": "https://arxiv.org/abs/2604.10852",
+      "date": "2026-04",
+      "kind": "independent"
+    }
+  },
+  "business": {
+    "rev_2025_musd": {
+      "v": 510,
+      "src": "https://www.sec.gov/Archives/edgar/data/2021728/000162828026025762/cerebras-sx1april2026.htm",
+      "date": "2026-04-17",
+      "kind": "independent"
+    },
+    "rev_growth_2025_pct": {
+      "v": 76,
+      "src": "https://www.sec.gov/Archives/edgar/data/2021728/000162828026025762/cerebras-sx1april2026.htm",
+      "date": "2026-04-17",
+      "kind": "independent"
+    },
+    "nongaap_loss_2025_musd": {
+      "v": 75.7,
+      "src": "https://futurumgroup.com/insights/cerebras-s-1-teardown-is-the-23b-wafer-scale-ipo-the-end-of-gpu-homogeneity/",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "uae_share_2025_pct": {
+      "v": 86,
+      "src": "https://futurumgroup.com/insights/cerebras-s-1-teardown-is-the-23b-wafer-scale-ipo-the-end-of-gpu-homogeneity/",
+      "date": "2026-04",
+      "kind": "independent",
+      "note": "MBZUAI 62%, G42 24%"
+    },
+    "ipo_date": {
+      "v": "2026-05-14",
+      "src": "https://www.cnbc.com/2026/05/14/cerebras-cbrs-stock-trade-nasdaq-ipo.html",
+      "date": "2026-05-14",
+      "kind": "independent"
+    },
+    "ipo_raised_busd": {
+      "v": 5.55,
+      "src": "https://www.cnbc.com/2026/05/14/cerebras-cbrs-stock-trade-nasdaq-ipo.html",
+      "date": "2026-05-14",
+      "kind": "independent"
+    },
+    "ipo_price_usd": {
+      "v": 185,
+      "src": "https://www.cnbc.com/2026/05/14/cerebras-cbrs-stock-trade-nasdaq-ipo.html",
+      "date": "2026-05-14",
+      "kind": "independent"
+    },
+    "openai_mw": {
+      "v": 750,
+      "src": "https://www.theregister.com/2026/01/15/openai_cerebras_ai/",
+      "date": "2026-01-15",
+      "kind": "independent"
+    },
+    "openai_option_gw": {
+      "v": 2,
+      "src": "https://futurumgroup.com/insights/cerebras-s-1-teardown-is-the-23b-wafer-scale-ipo-the-end-of-gpu-homogeneity/",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "openai_value_busd": {
+      "v": 20,
+      "unit": "USD billion or more",
+      "src": "https://futurumgroup.com/insights/cerebras-s-1-teardown-is-the-23b-wafer-scale-ipo-the-end-of-gpu-homogeneity/",
+      "date": "2026-04",
+      "kind": "independent"
+    },
+    "q2_2026_rev_musd": {
+      "v": 180,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "q2_2026_cloud_musd": {
+      "v": 126,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "q2_2026_cloud_growth_pct": {
+      "v": 281,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "q2_2026_core_gm_pct": {
+      "v": 41,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "q2_2026_rpo_busd": {
+      "v": 25.4,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "q2_2026_mw_contracted": {
+      "v": 600,
+      "src": "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-fast-inference-cloud-business-nearly-quadruples",
+      "date": "2026-08-12",
+      "kind": "vendor"
+    },
+    "aws_date": {
+      "v": "2026-03-13",
+      "src": "https://www.aboutamazon.com/news/aws/aws-cerebras-ai-inference",
+      "date": "2026-03-13",
+      "kind": "independent",
+      "note": "Trainium for prefill, CS-3 for decode, EFA between them"
+    },
+    "price_70b_out_usd_per_m": {
+      "v": 0.6,
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor",
+      "note": "blended 3:1 at launch"
+    },
+    "price_405b_out_usd_per_m": {
+      "v": 12,
+      "src": "https://www.cerebras.ai/blog/llama-405b-inference",
+      "date": "2024-11-18",
+      "kind": "vendor"
+    },
+    "price_405b_in_usd_per_m": {
+      "v": 6,
+      "src": "https://www.cerebras.ai/blog/llama-405b-inference",
+      "date": "2024-11-18",
+      "kind": "vendor"
+    },
+    "price_gptoss_usd_per_m": {
+      "v": 0.39,
+      "src": "https://artificialanalysis.ai/providers/cerebras",
+      "date": "2026-09-14",
+      "kind": "independent",
+      "note": "blended as listed"
+    },
+    "price_qwen_coder_in_out": {
+      "v": "0.30 / 1.20",
+      "src": "https://news.ycombinator.com/item?id=44760023",
+      "date": "2025-08",
+      "kind": "community"
+    },
+    "context_max_k": {
+      "v": 128,
+      "unit": "K tokens",
+      "src": "https://newsletter.semianalysis.com/p/cerebras-faster-tokens-please",
+      "date": "2026",
+      "kind": "community",
+      "note": "AA lists 131k for gpt-oss-120b"
+    },
+    "context_launch_k": {
+      "v": 8,
+      "unit": "K tokens at launch",
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor"
+    },
+    "batch_quote": {
+      "v": "solid double digits by Q4",
+      "src": "https://news.ycombinator.com/item?id=41371041",
+      "date": "2024-08",
+      "kind": "community",
+      "note": "jwan584, identified as a Cerebras employee"
+    },
+    "batch_not_mature": {
+      "v": "Our current batch size number is not mature so we would prefer not to provide it",
+      "src": "https://www.theregister.com/2024/08/27/cerebras_ai_inference/",
+      "date": "2024-08-27",
+      "kind": "vendor",
+      "note": "paraphrased from The Register"
+    },
+    "hw_rev_2025_musd": {
+      "v": 358,
+      "src": "https://www.spglobal.com/market-intelligence/en/news-insights/research/2026/06/cloud-growth-to-power-two-thirds-of-cerebras-revenue-in-2026",
+      "date": "2026-06",
+      "kind": "independent",
+      "note": "2025 hardware revenue per S-1 as reported by S&P Global"
+    },
+    "cloud_rev_2025_musd": {
+      "v": 152,
+      "src": "https://www.spglobal.com/market-intelligence/en/news-insights/research/2026/06/cloud-growth-to-power-two-thirds-of-cerebras-revenue-in-2026",
+      "date": "2026-06",
+      "kind": "independent"
+    }
+  },
+  "models": {
+    "llama31_8b": {
+      "layers": 32,
+      "hidden": 4096,
+      "kv_heads": 8,
+      "head_dim": 128,
+      "params_b": 8.0,
+      "active_b": 8.0,
+      "attn_layers": 32,
+      "label": "Llama 3.1 8B"
+    },
+    "llama31_70b": {
+      "layers": 80,
+      "hidden": 8192,
+      "kv_heads": 8,
+      "head_dim": 128,
+      "params_b": 70.6,
+      "active_b": 70.6,
+      "attn_layers": 80,
+      "label": "Llama 3.1 70B"
+    },
+    "llama31_405b": {
+      "layers": 126,
+      "hidden": 16384,
+      "kv_heads": 8,
+      "head_dim": 128,
+      "params_b": 405,
+      "active_b": 405,
+      "attn_layers": 126,
+      "label": "Llama 3.1 405B"
+    },
+    "gptoss_120b": {
+      "layers": 36,
+      "hidden": 2880,
+      "kv_heads": 8,
+      "head_dim": 64,
+      "params_b": 117,
+      "active_b": 5.1,
+      "attn_layers": 18,
+      "label": "gpt-oss-120b",
+      "note": "half the layers use a 128-token sliding window, so only 18 grow with context"
+    },
+    "maverick": {
+      "layers": 48,
+      "hidden": 5120,
+      "kv_heads": 8,
+      "head_dim": 128,
+      "params_b": 400,
+      "active_b": 17,
+      "attn_layers": 48,
+      "label": "Llama 4 Maverick"
+    },
+    "qwen3_235b": {
+      "layers": 94,
+      "hidden": 4096,
+      "kv_heads": 4,
+      "head_dim": 128,
+      "params_b": 235,
+      "active_b": 22,
+      "attn_layers": 94,
+      "label": "Qwen3-235B-A22B"
+    },
+    "kimi_k2": {
+      "layers": 61,
+      "hidden": 7168,
+      "kv_heads": 1,
+      "head_dim": 576,
+      "params_b": 1000,
+      "active_b": 32,
+      "attn_layers": 61,
+      "label": "Kimi K2.6",
+      "note": "MLA: one 576-wide latent per layer per token, stored once (not K and V)",
+      "mla": true
+    }
+  },
+  "extra": {
+    "s405b_100k_tps": {
+      "v": 539,
+      "unit": "tok/s at 100K context",
+      "src": "https://www.cerebras.ai/blog/llama-405b-inference",
+      "date": "2024-11-18",
+      "kind": "vendor"
+    },
+    "ttft_405b_ms": {
+      "v": 240,
+      "unit": "ms at 1K prompt",
+      "src": "https://www.cerebras.ai/blog/llama-405b-inference",
+      "date": "2024-11-18",
+      "kind": "vendor"
+    },
+    "aa_gptoss_ttft_s": {
+      "v": 1.7,
+      "unit": "s, public endpoint",
+      "src": "https://artificialanalysis.ai/providers/cerebras",
+      "date": "2026-09-14",
+      "kind": "independent"
+    }
+  }
+}

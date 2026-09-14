@@ -1,0 +1,70 @@
+            <h2>Why I went looking</h2>
+            <p>
+                Two posts ago I measured one laptop and found that every decode number it produced sat
+                under a single line: memory bandwidth divided by the bytes a token reads. The follow-up
+                showed the line holds for six architectures once you count the bytes correctly. The laptop's
+                line is {{GPU_LAPTOP_BW_GBS}} GB/s. A good server GPU is a hundred times that. And then there's
+                a company that sells a 70B model at two thousand tokens a second, per user, which on that
+                same arithmetic would need a line somewhere north of a hundred terabytes a second. I wanted
+                to know what the far end of the line looks like, whether the arithmetic I've been using on a
+                laptop says anything useful about it, and where it stops saying anything at all.
+            </p>
+            <p>
+                So this is a post about Cerebras, written from the outside. I have never touched one of their
+                systems. What I have is what everyone has: their own technical posts and press releases, two
+                Hot Chips talks, the S-1 and the quarterly filings, a handful of independent measurements from
+                Artificial Analysis and two universities, two research papers that ran real language models
+                on real wafers and published what they found, a long analyst piece, and the forum threads
+                where people who build chips argue with people who buy tokens. I read all of it, and then I did
+                what the first two posts did: arithmetic. Every number in what follows is dated and marked by
+                where it came from, because in this subject a number without a date is close to worthless. The
+                70B figure moved from {{S_70B_AUG}} to {{S_70B_OCT}} tokens a second in two months.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Kind of number</th>
+                            <th>Examples</th>
+                            <th>How I treat it</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Vendor</td><td>Cerebras spec sheets, blog posts, press releases; NVIDIA's own record post</td><td>True as stated, but check what's stated: which model, which precision, how many users, whether a draft model was involved, which day.</td></tr>
+                        <tr><td>Independent</td><td>Artificial Analysis measurements, two peer-reviewed papers that ran on real hardware, SEC filings</td><td>The numbers I'd build on. Where they disagree with a vendor number, the disagreement is the interesting part.</td></tr>
+                        <tr><td>Community</td><td>Hacker News commenters with chip backgrounds, an analyst's cost model, a Cerebras employee's forum reply</td><td>Estimates. Quoted as estimates, with the handle, never promoted to fact.</td></tr>
+                        <tr><td>Computed</td><td>Everything with "arithmetic" in the chart title</td><td>Mine. The formulas are in the repository next to the source list, so you can change an input and see what moves.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                I should say what this is not. It's not sponsored, I hold no position in the stock, and I have
+                no inside knowledge; where I say "Cerebras must be doing X" I mean the published numbers only
+                add up if X, and I say so. It's also not a buyer's guide. It's the third time I've asked the
+                same question, "why is this number what it is", of a machine I find interesting, and the first
+                time the machine is one I can't put a probe on.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>The question it answers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>What is claimed, and when</td><td>Which numbers exist, who measured them, and what each one quietly assumes.</td></tr>
+                        <tr><td>What the line says must be true</td><td>If a 400B model really decodes at a thousand tokens a second for one user, what has to be physically true, and the three ways to make it true.</td></tr>
+                        <tr><td>What a wafer is</td><td>The chip, core by core, with the spec sheet re-derived from first principles so the big numbers stop being magic.</td></tr>
+                        <tr><td>Putting a transformer on a mesh</td><td>Why the obvious software is hundreds of times too slow on this hardware, from the one group that published a working system.</td></tr>
+                        <tr><td>Bigger than a wafer</td><td>How many wafers each model needs, what moves between them, and what that rules out.</td></tr>
+                        <tr><td>Where the millisecond goes</td><td>The centre of the post: the bandwidth line predicts six hundred thousand tokens a second and they get two thousand. What eats the rest, and why it's the same thing on every published number.</td></tr>
+                        <tr><td>What the design gives up</td><td>Context, prompts, batch, power, memory that stopped growing, and the money.</td></tr>
+                        <tr><td>The other exits</td><td>Groq and NVIDIA solve the same equation with different terms.</td></tr>
+                        <tr><td>What carries back</td><td>Which of this applies to the laptop on your desk, and which doesn't.</td></tr>
+                    </tbody>
+                </table>
+            </div>

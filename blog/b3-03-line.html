@@ -1,0 +1,61 @@
+            <h2>What the line says must be true</h2>
+            <p>
+                Decoding one token means reading every active weight once. A 70B model at 16-bit is
+                {{BYTES_70B_GB}} GB; a 405B model is {{BYTES_405B_GB}} GB. So one user at a thousand tokens a
+                second on the 70B needs {{BW_70B_1000_TBS}} TB/s of bandwidth into the compute, and on the
+                405B needs {{BW_405B_1000_TBS}} TB/s. Cerebras's launch post used the first of those figures
+                itself. An H100 has {{GPU_H100_BW_TBS}} TB/s. A B200 has {{GPU_B200_BW_TBS}}. Eight of either
+                in a box, perfectly parallel, are still several times short for the 70B and more than ten
+                times short for the 405B. There is no HBM part on any roadmap that closes that on its own.
+            </p>
+            <p>
+                Which leaves exactly three ways out, and every fast-inference company is some mixture of
+                them.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Exit</th>
+                            <th>What it changes in the equation</th>
+                            <th>Who leans on it</th>
+                            <th>What it costs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Read fewer bytes per token</td><td>The numerator. 8-bit or 4-bit weights, mixture-of-experts so only a slice of the model is active, and speculative decoding so one read of the weights emits several tokens.</td><td>Everyone. NVIDIA's Blackwell record is FP8 plus a draft model; Cerebras's every number since October 2024 has a draft model; Kimi on Cerebras is 4-bit.</td><td>Accuracy risk from precision (the first post measured it), model choice constrained to MoE, and speed that fluctuates with how often the draft is right.</td></tr>
+                        <tr><td>Add more parts</td><td>The denominator, by summing bandwidth across chips with tensor parallelism.</td><td>NVIDIA at 8 GPUs per box; Groq at hundreds of chips per model.</td><td>Every layer now ends with a synchronisation across chips. Past a few parts the sync costs more than the bytes saved; the WaferLLM measurements below put a number on that for GPUs.</td></tr>
+                        <tr><td>Change the memory</td><td>The denominator, by moving weights from DRAM to SRAM, which is ten to a hundred times faster per byte but ten to a hundred times smaller per dollar.</td><td>Groq (230 MB per chip), Cerebras (44 GB per wafer).</td><td>Capacity. The whole model, and every user's context cache, has to fit in a memory that is measured in megabytes per chip or tens of gigabytes per wafer, and that stopped growing.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Cerebras is the third exit taken to its limit, plus a healthy amount of the first. Here is
+                what the line looks like once you put both ends on it. Same formula as the laptop chart in
+                the last post, same model (Llama 70B at 16-bit), bars are bandwidth divided by bytes, dots are
+                what was actually reported.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/far-end.svg" alt="Horizontal log-scale bars of bandwidth divided by 141 GB for seven systems: this laptop 0.24 tokens per second, RTX 5060 2.7, eight H100 190, eight B200 453, 576 Groq chips 326,000, four WSE-3 595,000, four WSE-3 Turbo 1.2 million. Dots show reported speeds: H100 128, Groq 300, Cerebras 450 then 2,100." loading="lazy" decoding="async">
+                <figcaption>Bandwidth divided by bytes per token for Llama 70B at 16-bit. The GPU box lands at two thirds of its line, the way my laptop does. The wafers land at a third of one percent of theirs.</figcaption>
+            </figure>
+
+            <p>
+                That chart is the whole post in one picture. The H100 box was reported at {{S_H100_70B}}
+                tokens a second against a line of {{CEIL_H100X8}}, which is {{PCT_H100}}% of the ceiling; my
+                laptop hits about 80% of its own line on a good day. Four wafers have a combined line of
+                {{CEIL_WSE3X4}} tokens a second and were reported at {{S_70B_AUG}} on launch day and
+                {{S_70B_OCT}} two months later with a draft model: {{PCT_CER_2100}}% of the ceiling. Groq's
+                576-chip rack is the same story at {{PCT_GROQ}}%.
+            </p>
+            <p>
+                So the SRAM exit does something strange. It doesn't move you along the bandwidth line; it
+                takes you off it entirely. The machines with the most bandwidth are the ones furthest below
+                their ceiling, by three orders of magnitude, and are still the fastest things anyone has
+                measured. Whatever limits a wafer, it is not bytes per second. Before working out what it is,
+                I need to know what a wafer actually is, core by core, because the spec sheet numbers are so
+                large they read as marketing until you rebuild them.
+            </p>

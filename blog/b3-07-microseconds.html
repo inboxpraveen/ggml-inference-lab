@@ -1,0 +1,132 @@
+            <h2>Where the millisecond goes</h2>
+            <p>
+                Start from the launch-day 70B number, because it has no draft model in it. {{S_70B_AUG}}
+                tokens a second is {{STEP_70B_AUG_US}} microseconds per token. The model has
+                {{LAYERS_70B}} layers, and they run one after another; a layer can't start until the one
+                before it has finished, on this machine as on any other. So each layer gets
+                {{US_70B_NOSPEC}} microseconds. Now cost the bytes and the arithmetic for one layer. The
+                weights don't move, so a layer can only be served by the cores that hold it: four wafers
+                hold {{LAYERS_70B}} layers, {{LAYERS_PER_WAFER_70B}} per wafer, so one layer gets a
+                twentieth of a wafer, which is {{WAFER_SHARE_BW_PBS}} PB/s of bandwidth and
+                {{WAFER_SHARE_PF}} PFLOPS of dense compute. A layer of the 70B is {{LAYER_70B_GB}} GB of
+                weights, which at that bandwidth is {{BUD_WSE_BYTES}} microseconds. It's
+                {{LAYER_70B_GFLOP}} GFLOP of multiply-adds, which at that compute is {{BUD_WSE_FLOPS}}
+                microseconds. Even added rather than overlapped, bytes and compute explain about a seventh
+                of the layer's time. The other {{BUD_WSE_SYNC}} microseconds are something else.
+            </p>
+            <p>
+                The something else is the thing WaferLLM measured: a decode layer on a mesh is a sequence
+                of dependent steps, each of which ends with information having to travel across the region
+                of the wafer that holds that layer. Project the hidden state onto Q, K and V: reduce and
+                broadcast. Attention over the cache: reduce across heads. Output projection: reduce.
+                Normalise: reduce. Two or three feed-forward matrices: reduce each. Call it ten dependent
+                communication phases per layer, and each one is some fraction of a wafer crossing
+                (recall {{WAFER_CROSS_US}} microseconds edge to edge) plus the software routing stages
+                WaferLLM describes, plus the dataflow handlers waking up. Ten phases at two to three
+                microseconds each is twenty to thirty microseconds. That's the number, and the reason it
+                doesn't shrink when the layer's slice of the wafer gets faster.
+            </p>
+            <p>
+                I can't see inside the machine to confirm the phase count, so here's the test I can do
+                from outside. If per-layer time is set by wafer-crossing latency rather than by bytes, it
+                should be roughly the same for every model, regardless of how wide the model is, because
+                a wider layer just uses more cores in parallel and the crossing distance barely changes.
+                Below is every published speed converted to microseconds per layer per output token.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/per-layer.svg" alt="Horizontal bars of microseconds per layer per output token implied by each published speed. Cerebras with speculative decoding clusters between 6.0 and 9.3 for eight models from 70B dense to 480B MoE; Cerebras without speculative decoding is 17.4 and 27.8; Kimi K2.6 and the public API endpoint are 16.7 and 16.5; NVIDIA Blackwell systems are 20.1 and 42.7." loading="lazy" decoding="async">
+                <figcaption>One divided by speed times layers, for every dated number in the timeline. Hatched bars have a draft model in play, so they are per output token, not per forward pass.</figcaption>
+            </figure>
+
+            <p>
+                The two solid blue bars, from before speculative decoding, sit at {{US_8B_NOSPEC}} and
+                {{US_70B_NOSPEC}} microseconds: an 8B on one wafer and a 70B on four with three Ethernet hops
+                in the loop, and the per-layer cost differs by less than a factor of two while the layer
+                width differs by four. Then look at the hatched blue bars. Eight different models over ten
+                months, from a dense 70B to a 480B mixture of experts, and every one of them lands between
+                {{US_MIN_SPEC}} and {{US_MAX_SPEC}} microseconds per layer per token. That is not what you get
+                if the machine is limited by bytes or by FLOPs; those numbers would scale with the model. It
+                is exactly what you get if each layer costs a roughly fixed latency and the draft model lets
+                each forward pass emit about three tokens instead of one, turning 17 to 28 microseconds per
+                pass into 6 to 9 per token. The "3x faster" of October 2024 is, on this reading, mostly the
+                acceptance rate of the draft model, with the kernel rewrites contributing the rest.
+            </p>
+            <p>
+                The two exceptions test the rule rather than break it. Kimi K2.6 at {{US_KIMI}} is a
+                trillion-parameter model on a row of wafers; more wafer boundaries, more Ethernet hops, and
+                expert routing that has to gather across a wider region. The public gpt-oss-120b endpoint at
+                {{US_PUBLIC}} is the same model that did {{US_OSS}} at launch, measured a year later under
+                real load with long prompts; that gap is queueing and sharing, not physics. And the amber
+                bars are a different machine entirely: NVIDIA's Blackwell record on Maverick works out to
+                {{US_B200_MAV}} per layer per token with a draft model, which is a little over twice the
+                Cerebras figure for the same model, not twenty times.
+            </p>
+
+            <h3>The same accounting, four machines</h3>
+            <p>
+                Put the pieces into one simple model. Per layer, time is the bytes divided by the devices'
+                combined bandwidth, plus the FLOPs divided by their combined dense compute, plus a
+                synchronisation term for however many times the devices have to agree. On an 8-GPU box the
+                sync term is the NVLink all-reduce, twice per layer. I fitted it from the one GPU number
+                that has no draft model, the H100 cloud's {{S_H100_70B}} tokens a second on the 70B, and
+                got {{GPU_T_SYNC}} microseconds per all-reduce, which is in the range people measure for an
+                8-way NVLink reduction of a few tens of kilobytes. On the wafer the sync term is the
+                {{BUD_WSE_SYNC}} from the launch-day number. Here is what the accounting looks like.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-3/layer-budget.svg" alt="Stacked horizontal bars of microseconds per layer for Llama 70B at 16-bit, one user, no speculative decoding: eight H100s 66 bytes plus 32 sync equals 98; eight B200s 28 plus 32 equals 59; four WSE-3 1.7 bytes plus 2.3 compute plus 24 sync equals 28; four WSE-3 Turbo 14 in total." loading="lazy" decoding="async">
+                <figcaption>A model, not a measurement. The GPU sync term is fitted from the H100 point and reused for B200; the wafer sync term is what's left of the launch-day 70B point after bytes and compute, and is halved for the Turbo clock. Bytes and compute are spec-sheet arithmetic, with each wafer layer given a twentieth of a wafer.</figcaption>
+            </figure>
+
+            <p>
+                The GPU box is two thirds bytes and one third sync, so a faster memory (B200) helps it a lot
+                and a draft model helps it some more. The wafer is six parts sync to one part everything else, so a faster memory
+                does little for it (which is why the 44 GB staying put didn't matter for speed) and a faster
+                clock does everything, because every one of those dependent phases is counted in clocks. That
+                is the plain reading of the 2026 Turbo part: same silicon, roughly double the clock and the
+                power, "up to twice" the tokens per second per user. It's also why Cerebras's stated 2027
+                target of {{WAFER_CS5_TARGET_TPS_OPEN}} tokens a second per user on a gpt-oss-sized model is
+                less absurd than it sounds. That's {{US_CS5_TARGET}} microseconds per layer per token on a
+                36-layer model, which with a draft model at three tokens per pass is about
+                {{US_CS5_TARGET_PASS}} per pass, a bit under half of what the Turbo does today. A faster
+                clock, a shorter link, fewer phases per layer; it's a latency engineering problem, and those
+                tend to yield to effort in a way bandwidth problems don't.
+            </p>
+
+            <h3>Why extra users are nearly free, up to a point</h3>
+            <p>
+                This accounting explains the batch question too. On a GPU, every extra user in a batch shares
+                the one read of the weights, so throughput climbs with batch while per-user speed falls
+                slowly, then quickly once the compute is saturated; that's the curve in every serving paper.
+                On the wafer, the weights aren't being read in any sense that costs time. The
+                {{BUD_WSE_SYNC}} microseconds per layer are spent waiting for wavelets to arrive, and a second
+                user's wavelets can be in flight during the same wait. The compute for one user is
+                {{BUD_WSE_FLOPS}} microseconds per layer on the slice of wafer that holds the layer, so
+                about {{USERS_IN_WINDOW}} users fit inside the sync window before the arithmetic itself
+                starts to be noticed, and each of them sees close to the single-user speed. That matches the only two statements I
+                could find: a Cerebras engineer on Hacker News in August 2024 saying batch sizes would reach
+                "solid double digits" by the end of that year, and the company telling The Register the same
+                week that the batch size wasn't mature enough to state. What stops it is not bandwidth and
+                not compute but the KV cache, which every one of those users brings with them into a memory
+                that is already mostly full of weights. That is the next section.
+            </p>
+
+            <h3>The tricks on top</h3>
+            <p>
+                None of the following is unique to Cerebras, and all of it is in the numbers.
+            </p>
+            <ul>
+                <li><strong>Speculative decoding</strong> is worth about 3x here, per the per-layer chart, against a typical 1.5 to 2x on GPUs. The reason is the same accounting: verifying three draft tokens in one forward pass costs a GPU three times the compute and some of the bytes, but costs the wafer almost nothing extra because its pass is nearly all latency. A machine whose time is spent waiting benefits most from doing more per wait. Cerebras's own post warns that speed varies 20% either way with it on, which is the acceptance rate moving with the text; the first post found the same on the laptop with n-gram drafts.</li>
+                <li><strong>Four-bit storage with sixteen-bit arithmetic</strong>, stated for Kimi K2.6, is what a Q4 GGUF does on a CPU: the weights live packed and are expanded on the way into the multiplier. On a wafer it buys capacity, not speed, which for a trillion-parameter model is the constraint that matters.</li>
+                <li><strong>Zero-skipping in the fabric.</strong> Because senders drop zeros, any sparsity in activations is free. For a dense transformer at inference that's a modest effect. Cerebras and Qualcomm published a training-side path to make it large, pruning models to 80% unstructured sparsity, and Cerebras's CTO has said in interviews that models designed for the wafer rather than for GPUs could gain a lot. OpenAI's Codex-Spark, a model of undisclosed size served only on Cerebras, is the first public sign of a model built with a particular wafer in mind.</li>
+                <li><strong>Precision where it's free.</strong> Sixteen-bit weights were a launch-day selling point against Groq's 8-bit, and the first post measured what 8-bit costs (very little) and 4-bit costs (measurable). On a wafer 16-bit is nearly free as long as the model fits, because bytes aren't the constraint; it stops being free exactly when the model doesn't fit, which is why the trillion-parameter models are stored at 4-bit.</li>
+            </ul>
+            <p>
+                So the honest one-line answer to "how do they get two thousand tokens a second" is: they
+                built a machine whose per-layer cost is a fixed twenty-odd microseconds of on-chip latency
+                instead of a hundred-odd microseconds of memory and interconnect, and then used a draft
+                model to get three tokens out of each of those microsecond budgets. Everything that makes
+                that possible also constrains it, and that's where the design starts paying.
+            </p>

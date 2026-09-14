@@ -1,0 +1,86 @@
+            <h2>The other exits</h2>
+
+            <h3>Groq: the same memory, cut into chips</h3>
+            <p>
+                Groq took the SRAM exit too, and cut the other way. An LPU is a single normal-sized die with
+                {{GPU_GROQ_SRAM_MB}} MB of SRAM at {{GPU_GROQ_BW_TBS}} TB/s, no caches, no dynamic
+                scheduling, and a compiler that decides at build time which functional unit does what on
+                every clock cycle, so the chip's timing is deterministic to the cycle. Llama 70B on Groq
+                needs {{GPU_GROQ_CHIPS_70B}} of those chips, wired together with tensor parallelism at the
+                board and rack level, and the same compiler schedules the traffic between chips as
+                statically as the traffic within one. The 2024 figure was about 300 tokens a second on the
+                70B at 8-bit, against Cerebras's 450 at 16-bit on four wafers the same month.
+            </p>
+            <p>
+                On the accounting from the last two sections, Groq is the wafer with the crossings made
+                explicit. Its per-layer time is also almost entirely synchronisation, but the
+                synchronisation crosses 576 chip boundaries instead of a mesh, and the determinism is what
+                makes that survivable: if you know to the cycle when every chip's partial sum will be ready,
+                you don't pay for the uncertainty. The USC measurements found Groq had the lowest latency on
+                individual operations of any platform, up to 300x an H100 on some, and the highest power
+                draw per operation, and no support for the fused attention kernel everyone else uses. The
+                per-chip capacity is the constraint that never goes away: 230 MB means every model is a
+                rack, and every user's cache is spread across the rack too. In December 2025 NVIDIA paid
+                about ${{GPU_NVIDIA_GROQ_DEAL_USD_B}} billion for a non-exclusive licence to Groq's
+                technology and hired its founders, which is the strongest statement any company has made
+                that the SRAM exit is worth owning. Groq the service continues under other management.
+            </p>
+
+            <h3>NVIDIA: every exit except the memory one</h3>
+            <p>
+                NVIDIA's own record on the 400B Maverick is worth reading as a list of everything that isn't
+                SRAM. Eight B200s in tensor parallel, so eight times the bandwidth and two all-reduces per
+                layer. FP8 for the matrices, the experts and the attention, halving the bytes. An EAGLE-3
+                draft model with a draft length of three, verified on the device in the same CUDA graph as
+                the main model so no host round trip sits between them. The all-reduce fused with the
+                normalisation and the quantisation that follow it into one kernel, and programmatic
+                dependent launch so the next kernel starts before the last one has fully drained. They report
+                4x over their own previous best and {{S_MAV_NV}} tokens a second, measured by Artificial
+                Analysis. On the per-layer chart that's {{US_B200_MAV}} microseconds per layer per token, about
+                {{RATIO_MAV}}x behind Cerebras on the same model. Everything in that list is an attack on
+                the sync term or the bytes term; nothing in it changes the memory. That's the ceiling of the
+                approach, and it's a higher ceiling than the 2024 baselines suggested.
+            </p>
+
+            <h3>SambaNova and the mixed answer</h3>
+            <p>
+                SambaNova's SN40L splits the difference with three tiers of memory: SRAM on the die, HBM
+                beside it, and DDR behind that, with a reconfigurable dataflow engine and a compiler that
+                places tensors across the tiers. The USC group found it the best of the specialised parts at
+                high batch sizes, where the throughput-per-dollar of DRAM capacity matters more than the
+                latency of SRAM. It's the natural home of the "one machine, many workloads" argument, and its
+                weaker single-user numbers are the price of that flexibility.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Cerebras WSE-3</th>
+                            <th>Groq LPU</th>
+                            <th>NVIDIA B200 (8-way)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Where weights live</td><td>44 GB SRAM per wafer, models pipelined across wafers</td><td>230 MB SRAM per chip, models tensor-parallel across hundreds of chips</td><td>180 GB HBM per GPU, tensor-parallel across eight</td></tr>
+                        <tr><td>Per-layer time is mostly</td><td>On-wafer latency</td><td>Chip-to-chip latency, statically scheduled</td><td>Bytes from HBM, plus two NVLink all-reduces</td></tr>
+                        <tr><td>What a faster clock does</td><td>Nearly proportional speedup</td><td>Nearly proportional speedup</td><td>Little; bandwidth-bound</td></tr>
+                        <tr><td>What more memory would do</td><td>Fewer wafers, more users, longer context</td><td>Fewer chips per model</td><td>Larger batch, longer context</td></tr>
+                        <tr><td>Precision at the record</td><td>16-bit weights (4-bit stored for the trillion-parameter models)</td><td>8-bit</td><td>FP8</td></tr>
+                        <tr><td>Draft model at the record</td><td>Yes, since Oct 2024</td><td>Undisclosed</td><td>Yes, EAGLE-3</td></tr>
+                        <tr><td>Best published per-user speed, large model</td><td>{{S_MAV}} (Maverick), {{S_OSS}} (gpt-oss-120b)</td><td>Not compared here</td><td>{{S_MAV_NV}} (Maverick)</td></tr>
+                        <tr><td>Where it falls off</td><td>Long context, prefill, low utilisation</td><td>Capacity, power per operation, kernel coverage</td><td>Single-user speed</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The pattern across all three is the one the ceiling chart drew: the moment weights stop
+                being read from DRAM per token, the problem stops being bandwidth and becomes latency, and
+                the design questions become how far a signal travels per layer and how many times. Cerebras
+                answered "across one wafer, in a mesh"; Groq answered "across a rack, on a fixed schedule";
+                NVIDIA answered "we'll stay on DRAM and shrink every other term". None of them is wrong. They
+                are optimising different points of the same equation, and the equation is the one my laptop
+                obeys.
+            </p>
