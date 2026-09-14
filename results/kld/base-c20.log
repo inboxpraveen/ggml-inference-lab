@@ -1,0 +1,12 @@
+0.00.802.375 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.406.016 I cmn          init: llama threadpool init, n_threads = 8
+0.01.464.733 I 
+0.01.464.886 I system_info: n_threads = 8 (n_threads_batch = 8) / 24 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | BLACKWELL_NATIVE_FP4 = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.01.465.535 I perplexity: saving all logits to results/kld/base-bf16-c512-20.kld
+0.01.465.552 I perplexity: tokenizing the input ..
+0.01.769.995 I perplexity: tokenization took 304.437 ms
+0.01.770.610 I perplexity: calculating perplexity over 20 chunks, n_ctx=512, batch_size=2048, n_seq=4
+0.02.220.695 I perplexity: 0.41 seconds per pass - ETA 0.03 minutes
+[1]12.9123,[2]18.1839,[3]18.3688,[4]19.3411,[5]19.6034,[6]19.9998,[7]20.1686,[8]21.7329,[9]23.0283,[10]23.8047,[11]24.2173,[12]24.4774,[13]25.2840,[14]24.9028,[15]24.5954,[16]25.2125,[17]23.3622,[18]23.8302,[19]23.5155,[20]23.6880,
+0.04.434.005 I Final estimate: PPL = 23.6880 +/- 1.12904
+

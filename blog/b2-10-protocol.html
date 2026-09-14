@@ -1,0 +1,109 @@
+            <h2>A protocol for a new box</h2>
+            <p>
+                This is what I'd do in the first hour on a machine I've never tuned, with the commands, in
+                the order the post has argued for. Most of it is the same for a thin client, a laptop, a
+                desktop and a GPU box; the parts that differ are marked. Assume the prebuilt llama.cpp for the
+                platform is unpacked and one small dense model is on disk. Nothing needs a compiler.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">One hour, in order</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># 0. five minutes: is the machine what you think it is</span>
+python scripts/precheck.py                              <span class="comment"># AC, power limit, DIMMs, cores, kernels, bandwidth, VRAM, load</span>
+
+<span class="comment"># 1. five minutes: the line, and the bytes of the model you actually want to run</span>
+llama-bench -m small-dense.gguf -p 0 -n 64 -r 3 -t &lt;P-cores&gt; -o jsonl      <span class="comment"># effective GB/s = size x tok/s</span>
+python scripts/zoo_meta.py                              <span class="comment"># bytes read per token, KV per token, head share, expert counts</span>
+<span class="comment">#    ceiling = GB/s / (weights read + context x KV per token). If it's below what you need, stop here and change something big.</span>
+
+<span class="comment"># 2. ten minutes: threads (CPU boxes), power and offload (GPU boxes)</span>
+llama-bench -m model.gguf -p 0 -n 128 -r 3 -t 4,6,8,12,16 -ngl 0             <span class="comment"># decode only; pick the peak, expect it at the P-core count</span>
+llama-bench -m model.gguf -p 0 -n 128 -r 3 -ngl 99                            <span class="comment"># GPU: everything on, head included; compare with -ngl N-1 to see the head's cost</span>
+nvidia-smi -q -d POWER                                                         <span class="comment"># the limit, again, during the run</span>
+
+<span class="comment"># 3. fifteen minutes: quant, with the accuracy test open</span>
+llama-perplexity -m model-BF16.gguf -f test.txt -c 512 --chunks 20 --kl-divergence-base base.kld
+llama-perplexity -m model-Q4_K_M.gguf -f test.txt -c 512 --kl-divergence-base base.kld --kl-divergence
+llama-bench -m model-Q8_0.gguf,model-Q6_K.gguf,model-Q4_K_M.gguf -p 256 -n 128 -r 3 -t &lt;P-cores&gt;
+<span class="comment">#    no AVX at all? add Q4_0 to that list and drop the K-quants. large vocabulary? add a head-only variant (--output-tensor-type).</span>
+
+<span class="comment"># 4. ten minutes: context, at the depth you'll really run</span>
+llama-bench -m model.gguf -p 0 -n 32 -d 0,2048,8192 -r 2 -ctk f16 -ctv f16
+llama-bench -m model.gguf -p 0 -n 32 -d 0,2048,8192 -r 2 -ctk q8_0 -ctv q8_0
+<span class="comment">#    CPU at depth: also try -fa 0. GPU: do the VRAM arithmetic with the deepest row.</span>
+
+<span class="comment"># 5. ten minutes: speculation, on your workload, not mine</span>
+llama-server -m model.gguf ... --spec-type ngram-simple --spec-ngram-simple-size-n 3 --spec-ngram-simple-size-m 8    <span class="comment"># CPU: short drafts</span>
+llama-server -m model.gguf ... --spec-type ngram-simple --spec-ngram-simple-size-n 3 --spec-ngram-simple-size-m 16   <span class="comment"># GPU: long drafts</span>
+<span class="comment">#    time three of your real prompts each way; keep it only if the repetitive ones win and the open ones don't lose</span>
+
+<span class="comment"># 6. five minutes: write it down</span>
+<span class="comment">#    every llama-bench run with -o jsonl, appended to one file, with a tag, the power limit and the load at the time</span></code></pre>
+            </div>
+
+            <p>
+                Step six is the one people skip and the one that made these two posts possible. Every
+                number in both of them is a row in one JSON-lines file with a tag, and the posts are built
+                from that file, so a prose sentence can't disagree with a measurement. You don't need the
+                build system; you need the file. When you rerun something next month on a new driver or a
+                new llama.cpp release, you append rows and compare, and when a number looks wrong you can see
+                what else was true at the time. The two things I'd add to every row after this week are the
+                GPU power limit and the CPU load, because those were the two conditions that explained the
+                two biggest surprises.
+            </p>
+
+            <h2>What this doesn't tell you</h2>
+            <ul>
+                <li>The zoo is six small models. It shows the bytes model holds across architectures at the sub-2B scale on one CPU and one GPU. A 30B MoE or a 70B dense model on a machine with the memory for them will show the same shape, but I haven't measured them and the absolute numbers here don't scale up by arithmetic alone; attention costs, launch overheads and cache behaviour all change with size.</li>
+                <li>The old-CPU result simulates the instruction set, not the memory system. A real 2010 desktop has a third of this laptop's bandwidth and much smaller caches, so expect every bar to be lower; the ordering between quants is what I'd trust to carry over.</li>
+                <li>Prompt-processing numbers across the zoo are single runs on a shared laptop. I've drawn no conclusions from them and neither should you.</li>
+                <li>Accuracy was measured for one model. The per-tensor sensitivities are the part I'd generalize; the absolute KLD of "Q4_K_M" is not a property of Q4_K_M, it's a property of Q4_K_M on that model.</li>
+                <li>Windows, prebuilt binaries, one vendor's GPU. The pre-check's Linux and macOS branches are best effort. The spill behaviour is specific to Windows; the bandwidth arithmetic isn't.</li>
+                <li>Single-user latency throughout. Serving many users batches across sequences and changes which device wins by a lot; that's a different post.</li>
+            </ul>
+
+            <h2>Closing note</h2>
+            <p>
+                The first post's closing line was that the ceiling picks the flags. This one adds the two
+                things I'd put in front of that. Count the bytes the way the model actually reads them, not
+                the way the file size suggests, because that's the difference between a MoE looking slow and
+                looking fast, between an 8K context being fine and being a cliff. And check that the machine
+                is the machine you think it is before believing any number it gives you, because mine was a
+                different, slower computer for a whole afternoon and told me nothing about it. Everything
+                else in inference tuning is either one of those two, or a flag that a measurement will pick
+                for you in ten minutes.
+            </p>
+
+            <div style="margin-top: 3rem; padding: 2rem; background: var(--secondary-bg); border-radius: 15px; border: 1px solid var(--border-color);">
+                <h3 style="margin-top: 0;">Resources &amp; Links</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; margin-bottom: 2rem;">
+                    <a href="https://github.com/inboxpraveen/ggml-inference-lab" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">Scripts and raw results</a>
+                    <a href="./blog-1.html" class="demo-button" style="margin: 0;">Part 1: one laptop, every knob</a>
+                    <a href="https://github.com/ggml-org/llama.cpp/releases/tag/b10941" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">llama.cpp b10941</a>
+                </div>
+
+                <h4>Models in the zoo:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF" target="_blank" rel="noopener noreferrer">Qwen3-0.6B</a>,
+                    <a href="https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF" target="_blank" rel="noopener noreferrer">Gemma-3-1B</a>,
+                    <a href="https://huggingface.co/bartowski/granite-3.1-1b-a400m-instruct-GGUF" target="_blank" rel="noopener noreferrer">Granite-3.1 1B-A400M</a>,
+                    <a href="https://huggingface.co/tiiuae/Falcon-H1-0.5B-Instruct-GGUF" target="_blank" rel="noopener noreferrer">Falcon-H1-0.5B</a>,
+                    <a href="https://huggingface.co/LiquidAI/LFM2-700M-GGUF" target="_blank" rel="noopener noreferrer">LFM2-700M</a>,
+                    <a href="https://huggingface.co/Felladrin/gguf-mamba-130m-hf" target="_blank" rel="noopener noreferrer">Mamba-130M</a> (requantized from F16; the older Q8_0 conversions fail to load),
+                    <a href="https://huggingface.co/Felladrin/gguf-flan-t5-small" target="_blank" rel="noopener noreferrer">flan-t5-small</a>,
+                    <a href="https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF" target="_blank" rel="noopener noreferrer">nomic-embed-text-v1.5</a>.
+                </p>
+
+                <h4>Tags:</h4>
+                <div class="tag-row" style="--domain: var(--d-llm);">
+                    <span class="domain-pill">LLM &amp; RAG</span>
+                    <span class="stack-tag">llama.cpp</span>
+                    <span class="stack-tag">Architectures</span>
+                    <span class="stack-tag">Edge hardware</span>
+                    <span class="stack-tag">Quantization</span>
+                    <span class="stack-tag">Inference Engineering</span>
+                </div>
+            </div>

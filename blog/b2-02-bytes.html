@@ -1,0 +1,66 @@
+            <h2>One number that transfers</h2>
+            <p>
+                Almost nothing from a benchmark transfers between machines. Tokens per second doesn't. The
+                best thread count doesn't. The right quant doesn't. What transfers is a division: the memory
+                bandwidth of the device the weights live on, divided by the bytes that have to be read to
+                produce one token. Generating a token with a dense model means reading every weight once, so
+                for a 633 MB file on a laptop whose single DDR5 stick can deliver 44.8 GB/s in theory, nothing
+                can exceed 70 tokens per second, and in practice the first post found the honest ceiling was
+                between 34 and 44.8 GB/s worth of reads. Every CPU result in that post was a story about
+                getting closer to that line. The line itself is the only thing that carries over.
+            </p>
+            <p>
+                Here is what that division looks like for hardware people actually own. The lines are spec
+                sheets. The dots are measured on my laptop, and each sits under the line for its device.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/ceilings.svg" alt="Log-log chart of tokens per second ceiling against bytes read per token, with one line per bandwidth class from a 2010 DDR3 desktop at 21 GB/s to an RTX 4090 at 1008 GB/s. Three measured dots from the laptop sit just under their respective lines." loading="lazy" decoding="async">
+                <figcaption>Bandwidth divided by bytes. Lines are spec sheets; dots are measured on the laptop from the first post and sit under their line. The gap between a dot and its line is what tuning can recover. Nothing gets above the line except speculation.</figcaption>
+            </figure>
+
+            <p>
+                Read it once and you can already answer most of the questions people ask. A 4 GB model on a
+                2010 desktop with dual-channel DDR3 tops out around 5 tokens per second, and no flag will
+                change that. The same file on an Apple laptop with unified memory at 120 GB/s tops out at 30.
+                On a discrete GPU at 384 GB/s it's 96, and on a 4090 it's 250. A second DIMM in my laptop
+                would move my line up by exactly 2x, which is more than every flag in the first post combined.
+                That's the first thing to know about a new machine: not its CPU model, not its core count,
+                but how many bytes per second it can pull from wherever the weights sit.
+            </p>
+            <p>
+                The theoretical number is easy: memory speed in MT/s times bus width in bytes times channels.
+                The achievable number needs a measurement, and it's worth taking two. The first is a plain
+                streaming read: several processes each summing a private buffer, started together, aggregate
+                bytes over wall time. On my laptop that gives {{PC_STREAM_BW}} GB/s, {{MEMBW_PCT_OF_PEAK}}% of
+                theoretical. The second is llama.cpp itself decoding a small dense model, with the file size
+                multiplied by tokens per second. That gives {{PC_EFF_BW}} GB/s here, a little higher, because
+                ggml's kernels are better at keeping the memory controller busy than a numpy sum. Plan with the
+                second one. The streaming test is a floor, and a useful one, because if llama.cpp comes in
+                well below it you know the problem is in the software setup and not the hardware.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">The thirty-second version, for any machine</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># 1. what the DIMMs promise (Windows; on Linux use dmidecode -t memory, on macOS system_profiler SPMemoryDataType)</span>
+powershell "Get-CimInstance Win32_PhysicalMemory | Select Capacity, ConfiguredClockSpeed, DataWidth"
+<span class="comment">#    theoretical GB/s = MT/s x (DataWidth / 8) x number of DIMMs / 1000</span>
+
+<span class="comment"># 2. what llama.cpp actually pulls: a small dense model, decode only, threads = physical P-cores</span>
+llama-bench -m Qwen3-0.6B-Q8_0.gguf -p 0 -n 64 -r 3 -t 8 -o jsonl
+<span class="comment">#    effective GB/s = model_size x avg_ts / 1e9. This is your line.</span>
+
+<span class="comment"># 3. the ceiling for any file you're considering</span>
+<span class="comment">#    tok/s &lt;= effective GB/s / (bytes read per token)</span></code></pre>
+            </div>
+
+            <p>
+                Bandwidth is the numerator and it's a property of the machine. The denominator, bytes read
+                per token, is a property of the model, and it's where the "but my model is different"
+                questions live. For a dense decoder it's the file size, near enough. For anything else it
+                isn't, and the difference is the whole next section. So: how many bytes does your model
+                actually read to produce one token?
+            </p>

@@ -1,0 +1,89 @@
+            <h2>Past the ceiling: speculation, by workload and by device</h2>
+            <p>
+                Every technique so far reads the weights once and produces one token. Speculative decoding
+                reads them once and, when it's lucky, produces several: something cheap guesses the next few
+                tokens, the model checks all of them in a single batched step, and every guess that matches
+                is kept. The check costs about what one token costs, because the bytes are the same and the
+                extra arithmetic is nearly free on a device that's waiting on memory anyway. When the guesses
+                are wrong you've wasted a step. So the whole question is where the guesses come from and how
+                often they're right, and that's a property of the workload, not the model.
+            </p>
+            <p>
+                The first post measured this on the 0.6B with the cheapest possible guesser, which looks for
+                the last few tokens in the prompt and proposes whatever followed them there. On an editing
+                task, where the output largely repeats the input, the CPU went from {{SPEC_CPU_NONE}} to
+                {{SPEC_CPU_NG}} tok/s, past the 70 tok/s ceiling for a single-token step. On open-ended
+                writing it went from {{SPEC_CPU_NONE_FREE}} to {{SPEC_CPU_NG_FREE}}, which is nothing, because
+                there was nothing to look up. On the GPU the same editing task went from {{SPEC_GPU_NONE}} to
+                {{SPEC_GPU_NG}}, and longer drafts helped there when they hurt on the CPU, because verifying
+                sixteen tokens on a launch-bound GPU costs about the same as verifying one.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/speculative.svg" alt="Grouped bars of tokens per second for three workloads, free writing, editing and quoting, under several speculative decoding settings on the CPU and the GPU. The editing and quoting bars roughly double with n-gram drafting; the free-writing bars do not move." loading="lazy" decoding="async">
+                <figcaption>From the first post. The workload decides whether speculation helps; the device decides how long a draft to use.</figcaption>
+            </figure>
+
+            <p>
+                Here's how that generalizes, as a table, because the rules are simple once the mechanism is
+                clear. The rows are workloads and the columns are what the guesser can be.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Workload</th>
+                            <th>Where the guesses come from</th>
+                            <th>Expected acceptance</th>
+                            <th>Worth it on a CPU?</th>
+                            <th>Worth it on a GPU?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Editing, rewriting, reformatting, translation of structured text</td><td>The prompt itself (n-gram lookup)</td><td>High: 58 to 76% of drafted tokens accepted in the first post</td><td>Yes, 2 to 2.5x, short drafts (8)</td><td>Yes, 1.7 to 2x, long drafts (16+)</td></tr>
+                        <tr><td>RAG answers that quote the retrieved passages, summaries with quotes, code edits</td><td>The prompt</td><td>Medium to high, depends on how much is quoted</td><td>Yes, 1.5 to 2.5x</td><td>Yes</td></tr>
+                        <tr><td>Code completion, repetitive boilerplate</td><td>The prompt, or a cache of previous outputs (ngram-cache)</td><td>Medium</td><td>Usually</td><td>Yes</td></tr>
+                        <tr><td>Open-ended writing, chat, reasoning</td><td>Nothing in the prompt; needs a draft model</td><td>Low without a draft model; with a same-family small model, high on predictable text and low on open prose (the 8B below went up 1.9x on editing and down on free writing)</td><td>Only with a draft model, and only if the target is large enough that the draft is cheap by comparison</td><td>Same, and the draft model needs its own VRAM</td></tr>
+                        <tr><td>Anything on a launch-bound small model on a GPU</td><td>Either</td><td>As above</td><td>n/a</td><td>Drafts are close to free; go long</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The draft-model case is the one people usually mean by speculative decoding, and it's the
+                one with the most conditions. The first post tried it with Qwen3-8B as the target and
+                Qwen3-0.6B as the draft, on a split where the 8B was partly on the CPU: editing went from
+                {{SPEC_8B_NONE}} to {{SPEC_8B_DRAFT}} tok/s, and free writing went from {{SPEC_8B_NONE_FREE}}
+                to {{SPEC_8B_DRAFT_FREE}}, slightly down, because the draft's own cost wasn't covered by its
+                acceptance rate on prose the small model couldn't predict. A draft model has to be much
+                cheaper than the target per token, agree with it often, and fit alongside it. The first two
+                are usually true for a same-family pair with a 10x size gap; the third is the one that fails
+                on an 8 GB card.
+            </p>
+            <p>
+                By architecture, three cautions. On a mixture of experts, the verification batch of k tokens
+                can route to up to k different expert sets, so the "one step's worth of bytes" assumption
+                breaks and the check costs more than a single token would; whether the acceptance rate
+                covers that is a measurement, and I haven't made it. On recurrent and hybrid models, a
+                rejected draft can't be undone by trimming a cache the way it can with attention, because
+                the state has already moved on; llama.cpp handles this with checkpoints in the server for
+                some architectures, and it's worth confirming on yours that speculation is actually on and
+                actually helping rather than silently falling back. On encoder-decoder models the decoder is
+                small and often already fast enough that the bookkeeping outweighs the gain; try it, but
+                expect less.
+            </p>
+            <p>
+                By device, one rule. Draft length should follow how much a bigger batch costs. On a CPU near
+                its bandwidth line, verifying sixteen tokens does real extra arithmetic and longer drafts
+                lose when acceptance drops; eight was the sweet spot in the first post. On a GPU that's
+                launch-bound, the batch is nearly free and longer drafts win. Between those, measure: two
+                draft lengths, one workload of yours, five minutes.
+            </p>
+            <p>
+                Speculation is as far as the flags go. What's left is code: a kernel for a tensor type the
+                backend handles badly, a fused operation the graph doesn't have, a sampler with real work in
+                it, a driver loop with control the tools don't expose. The first post wrote one of those and
+                found it bought nothing over llama-server on the same hardware. So when does custom code
+                actually pay, and how do you know before you've written it?
+            </p>

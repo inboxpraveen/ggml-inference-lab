@@ -1,0 +1,38 @@
+
+== OS and power
+Windows 10 (AMD64)
+battery present, on AC: True
+Power Scheme GUID: 6fecc5ae-f350-48a5-b669-b472cb895ccf  (Turbo)
+
+== CPU
+Intel(R) Core(TM) i7-14650HX  physical cores=16 logical=24
+ISA: sse4_2 avx avx2 fma f16c (py-cpuinfo does not list AVX-VNNI; the kernel DLL below tells you)
+ggml-cpu variants in bin/cpu: alderlake, cannonlake, cascadelake, cooperlake, haswell, icelake, ivybridge, piledriver, sandybridge, sapphirerapids, skylakex, sse42, x64, zen4; the loader scores each and keeps the best
+
+== Memory
+1 DIMM(s), 16 GB total, 5600 MT/s, 64-bit each: theoretical 44.8 GB/s
+free now: 3.9 GB
+streaming read, 1 process(es):  15.2 GB/s
+streaming read, 4 process(es):  32.7 GB/s
+streaming read, 8 process(es):  32.7 GB/s
+best is 73% of theoretical; 60 to 80% is normal for this kind of test
+decode ceilings at that bandwidth: 633 MB model 52 tok/s, 2 GB 16 tok/s, 4 GB 8.2 tok/s, 8 GB 4.1 tok/s
+llama-bench decode on Qwen3-0.6B-Q8_0.gguf with -t 8: 53.2 tok/s = 33.7 GB/s effective bandwidth (this is the figure to plan with; the streaming test above is a floor)
+  ceilings at 33.7 GB/s: 2 GB model 17 tok/s, 4 GB 8.4, 8 GB 4.2
+  CPU kernels loaded: ggml-cpu-alderlake.dll (alderlake = AVX2 + AVX-VNNI; haswell = AVX2; sandybridge = AVX only; sse42/x64 = no AVX)
+
+== GPU
+NVIDIA GeForce RTX 5060 Laptop GPU, 8151 MiB, 37 MiB, 3090 MHz
+power limit now 90.00 W, default 55.00 W
+free VRAM: 8114 MiB. Weights + n_ctx x KV bytes/token + ~10% compute must fit; on Windows an overflow spills to system RAM silently.
+other CUDA processes:
+  41160, C:\LeadForge\bin\llama-cuda\llama-server.exe
+  38192, C:\LeadForge\bin\llama-cuda\llama-server.exe
+  8968, C:\Users\inbox\AppData\Local\Programs\cursor\Cursor.exe
+
+== Background load
+CPU busy now: 9%
+
+== Warnings
+ - HYBRID CPU: the 16 "physical cores" include E-cores. llama.cpp defaults -t to all of them; set -t to the P-core count and measure.
+ - SINGLE CHANNEL: one DIMM populated. A second DIMM is the cheapest 2x for decode there is.

@@ -1,0 +1,6 @@
+0.01.437.188 I common_perf_print: prompt eval time =       0.01 ms /    28 tokens (    0.00 ms per token, 5600000.00 tokens per second)
+0.01.437.189 I common_perf_print:        eval time =      83.30 ms /    25 runs   (    3.33 ms per token,   300.12 tokens per second)
+0.01.437.190 I common_perf_print:       total time =     256.97 ms /    53 tokens
+0.00.496.318 I common_perf_print: prompt eval time =       0.01 ms /    28 tokens (    0.00 ms per token, 4000000.00 tokens per second)
+0.00.496.327 I common_perf_print:        eval time =      57.86 ms /    23 runs   (    2.52 ms per token,   397.49 tokens per second)
+0.00.496.349 I common_perf_print:       total time =     158.26 ms /    51 tokens

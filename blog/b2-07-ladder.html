@@ -1,0 +1,99 @@
+            <h2>The order of things to try</h2>
+            <p>
+                The first post ended with a ladder for one laptop. This one is the ladder for a class of
+                machine, ordered by how much each step is likely to pay on that class, so that when you sit
+                down at a new box you don't spend the afternoon on a flag that can't matter there. The
+                bandwidth model tells you most of the order. Anything that reduces bytes per token on the
+                device that holds the weights goes first. Anything that only shuffles compute goes last. And
+                on a device where the model is launch-bound rather than bandwidth-bound, most of the byte
+                levers stop working and the order changes.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Machine</th>
+                            <th>Bandwidth line</th>
+                            <th>Model size that decodes at 10+ tok/s</th>
+                            <th>Try first</th>
+                            <th>Then</th>
+                            <th>Don't bother</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>2008 to 2010 desktop, DDR3, SSE4.2 only (Core 2, first-gen Core i)</td><td>15 to 25 GB/s</td><td>Up to about 2 GB read per token: 1B to 3B at Q4_0 or Q8_0</td><td>Confirm which kernels loaded. Q4_0 or Q8_0, not K-quants. Threads = physical cores.</td><td>Self-speculation on repetitive tasks. A small MoE if RAM allows.</td><td>K-quants and IQ quants (slow paths without AVX). Anything over 4B. GPU offload to whatever card is in it.</td></tr>
+                        <tr><td>2011 to 2013 desktop, DDR3, AVX but no AVX2 (Sandy, Ivy Bridge)</td><td>15 to 25 GB/s</td><td>The same 1B to 3B, any quant</td><td>Confirm the sandybridge kernels loaded. Quant by the accuracy table; K-quants are fine here.</td><td>As above.</td><td>Expecting prompt processing to match a modern chip; it's 2 to 3x slower per core.</td></tr>
+                        <tr><td>Thin client or mini PC, LPDDR4/5, 4 to 8 GB, 2 to 4 cores</td><td>20 to 40 GB/s</td><td>Up to about 1.5 GB: 0.5B to 1.7B at Q8_0, 3B at Q4</td><td>RAM headroom first (the file plus cache plus the OS must fit). Threads = cores. Q8_0 for anything under 1B.</td><td>KV cache at q8_0 if context is long. n-gram speculation for editing and RAG.</td><td>Big MoE (RAM). Pinning. Anything that needs a compiler on the box.</td></tr>
+                        <tr><td>Modern laptop, one DIMM, hybrid Intel (this one)</td><td>34 to 45 GB/s</td><td>Up to about 3.5 GB: 4B at Q6; an 8B at Q4 lands at 7 tok/s</td><td><code>-t</code> = P-cores. Plug in. Quant by the accuracy table, head separately if the vocabulary is large.</td><td>The second DIMM. q8_0 cache past 4K. Speculation by workload.</td><td>Pinning. <code>-tb</code>. Poll settings. Below Q8_0 on a sub-1B model if it's going to the GPU anyway.</td></tr>
+                        <tr><td>Desktop, DDR5 dual channel</td><td>70 to 100 GB/s</td><td>Up to about 8 GB: 8B at Q8, 14B at Q4</td><td>Threads = physical cores (no E-core trap on AMD; same trap on Intel). Quant by the table.</td><td>A 30B-A3B class MoE, which reads 2 GB per token and fits in 32 GB.</td><td>Chasing the last 10% with kernels; buy the GPU instead.</td></tr>
+                        <tr><td>Apple silicon, unified memory</td><td>100 to 800 GB/s by chip</td><td>Whatever fits in RAM minus what macOS needs: 8B to 70B</td><td>Metal, all layers. The bandwidth line is the DIMM line, so the chip tier decides everything.</td><td>MoE, because RAM is the constraint and bandwidth is generous. q8_0 cache at depth.</td><td>CPU-only runs. The Windows threads chapter.</td></tr>
+                        <tr><td>Discrete GPU, model fits in VRAM</td><td>300 to 1000 GB/s</td><td>Up to VRAM minus context: 8B at Q6 on 8 GB, 32B at Q4 on 24 GB</td><td>Everything on the card, head included. Flash attention on. Check the power limit.</td><td>q8_0 cache past 8K. Drafts of 16 or more, since verification is nearly free when launch-bound.</td><td>Quantizing a sub-2B model below Q8_0 for speed; it's launch-bound and won't move.</td></tr>
+                        <tr><td>Discrete GPU, model doesn't fit</td><td>The CPU's line for whatever spills</td><td>Decided by the split, not the card</td><td>Do the VRAM arithmetic with the real context length. Quantize the cache before moving any weights.</td><td>Move FFN or expert weights to the CPU, not whole layers. <code>--n-cpu-ffn</code>, <code>--n-cpu-moe</code>.</td><td>Trust <code>--fit</code> without reading what it chose. Assume "loaded fine" means "fits".</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Old CPUs: the quant order flips</h3>
+            <p>
+                The "2010 desktop" row has a surprise in it that I measured on this machine by forcing the
+                CPU kernel libraries an old chip would load. llama.cpp ships fourteen builds of its CPU
+                kernels and picks the best one for the processor at startup. Put only the SSE4.2 build in the
+                folder and it runs the code a Core 2 or first-generation Core i7 would run. Put only the
+                Sandy Bridge build there and you get AVX without AVX2, which is the 2011 to 2013 desktops.
+                Same files, same threads, same memory, one session.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/oldcpu.svg" alt="Grouped bars of decode and prompt-processing speed for six quantizations under three kernel sets. Under SSE4.2 only, Q8_0 decodes at 53 and Q4_0 at 70 while Q6_K, Q5_K_M, Q4_K_M and IQ4_XS fall to 38 to 44, and their prompt processing collapses to about 80 against 231 for Q8_0. Under AVX the K-quants recover to 63 to 81. Under AVX2 everything is fastest and Q4_0 and IQ4_XS lead at 91." loading="lazy" decoding="async">
+                <figcaption>Measured, one session. This simulates the instruction set of an old CPU, not its slower memory or smaller caches; a real 2010 box would be lower across the board, but the ordering is what matters.</figcaption>
+            </figure>
+
+            <p>
+                With only SSE4.2, Q8_0 decodes at {{OLD_SSE_Q8_TG}} tok/s and Q4_0 at {{OLD_SSE_Q40_TG}}, but
+                Q4_K_M, the file everyone downloads, does {{OLD_SSE_Q4KM_TG}}, slower than the Q8_0 that's
+                twice its size, and IQ4_XS does {{OLD_SSE_IQ4_TG}}. Prompt processing is worse: the K-quants
+                and IQ quants fall to about {{OLD_SSE_Q4KM_PP}} tok/s against {{OLD_SSE_Q8_PP}} for Q8_0 and
+                {{OLD_SSE_Q40_PP}} for Q4_0. The K-quant and importance-quant formats have fast dot-product
+                kernels written for AVX and AVX2, and without those instructions they fall back to generic
+                code that costs more per byte than the bytes save. The old, simple Q4_0 format has a fast
+                SSE path, and so does Q8_0. Give the same files AVX and the K-quants come most of the way
+                back and overtake Q4_0: Q4_K_M at {{OLD_AVX_Q4KM_TG}}, IQ4_XS at {{OLD_AVX_IQ4_TG}} against
+                Q4_0 at {{OLD_AVX_Q40_TG}}. Give them AVX2 and everything is where the first post put it,
+                with Q4_0 and IQ4_XS on top at {{OLD_ALDER_Q40_TG}} and {{OLD_ALDER_IQ4_TG}}.
+            </p>
+            <p>
+                So the rule splits on one instruction set, and it's AVX, not AVX2. On a machine with no AVX
+                at all, which is Intel before Sandy Bridge and most thin clients built on Atom, Celeron or
+                Pentium Silver cores before 2023: Q4_0 if you can afford its accuracy, which on a small
+                model you often can't, or Q8_0 if you can afford the bytes, and never a K-quant. Check the
+                accuracy cost of Q4_0 with the ten-minute test, because the first post found it a bad deal
+                against Q4_K_M at the same size; on an SSE-only CPU it's the only 4-bit deal there is. On a
+                machine with AVX but not AVX2, the 2011 to 2013 desktops, pick the quant by accuracy the
+                way you would on a modern chip; you lose prompt-processing speed, not the decode ordering.
+                Either way, run the pre-check first, because the first thing it tells you is which kernels
+                you got.
+            </p>
+
+            <h3>The ladder, restated for any device</h3>
+            <p>
+                Strip the table down and it's five steps in a fixed order. One, find the line: measure
+                bandwidth, count bytes per token for the model you have in mind, divide. If the answer is
+                under what you need, no flag will save you; change the model, the quant, or the machine.
+                Two, make the machine what you think it is: plug it in, check the power limit, check the
+                kernels, check VRAM free, check the load. On this laptop those were worth 2x on the CPU and
+                3 to 5x on the GPU before any tuning. Three, get onto the line: threads equal to physical
+                performance cores, and on a GPU, everything offloaded including the head. That's the
+                {{T16_TG}} to {{T8_TG}} tok/s step from the first post, worth 5 to 50% depending on the day.
+                Four, reduce bytes with the accuracy test open: quant by the table, head separately if it's
+                a big share, cache at q8_0 past a few thousand tokens, experts on the CPU if the GPU is
+                short. Each of those is a measured trade. Five, and only now, look past the line: speculation
+                where the workload repeats its input, and custom code where you can show, with a profile,
+                that the stock path is leaving something behind.
+            </p>
+            <p>
+                Steps one to four get you to the line. The first post's best CPU result without speculation
+                was 60 tok/s against a line of 70. Step five is the only one that goes above it, and it's
+                the one people reach for first because it sounds clever. It works, in specific conditions.
+                What are they, and how do they change with the workload and the device?
+            </p>

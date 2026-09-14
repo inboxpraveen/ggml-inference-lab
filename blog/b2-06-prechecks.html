@@ -1,0 +1,98 @@
+            <h2>Pre-checks: is this the machine you think it is?</h2>
+            <p>
+                I want to tell this one as it happened, because it's the most useful thing in the post and I
+                nearly missed it. I started the architecture runs for this piece on the same laptop as
+                before, same binaries, same commands. The CPU numbers came out as expected. The GPU numbers
+                came out at less than half of what the first post reported. Qwen3-0.6B, which had decoded at
+                {{B1_06_GPU}} tok/s the day before, did {{BAT_GPU_06_BAT}}. The 8B did {{BAT_GPU_8B_BAT}}
+                instead of {{B1_8B_GPU}}. I checked for other processes on the GPU, checked VRAM, tried
+                different thread counts, changed the Windows power scheme. Nothing. Then I sampled the GPU's
+                clocks during a run and found it pinned at a few hundred megahertz with a power limit of
+                {{PL_BATTERY}} watts against a default of {{PL_DEFAULT}}. The laptop was on battery.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/battery.svg" alt="Four pairs of bars comparing plugged-in against battery: CPU decode 57 versus 55 tokens per second, CPU prompt processing 314 versus 334, GPU decode of the 0.6B model 370 versus 137, GPU decode of the 8B model 51 versus 11." loading="lazy" decoding="async">
+                <figcaption>Same laptop, same commands, one cable. The CPU pairs are the control: nothing changed there. The GPU lost {{BAT_GPU_06_RATIO}}x on the small model and {{BAT_GPU_8B_RATIO}}x on the large one.</figcaption>
+            </figure>
+
+            <p>
+                Plugged in, the limit went to {{PL_AC}} W and the numbers came back: {{BAT_GPU_06_AC}} and
+                {{BAT_GPU_8B_AC}} tok/s. The CPU didn't care either way, {{BAT_CPU_TG_AC}} against
+                {{BAT_CPU_TG_BAT}} on decode and {{BAT_CPU_PP_AC}} against {{BAT_CPU_PP_BAT}} on prompt
+                processing, both within the noise of a busy machine, which surprised me; I'd assumed battery
+                would cut CPU turbo too, and on this laptop it didn't measurably. So the bandwidth line held
+                for the CPU on battery and the GPU silently became a different, much slower device. Nothing
+                in llama.cpp's output hints at it. The model loads, every layer reports offloaded, the numbers
+                are just small.
+            </p>
+            <p>
+                That's the second time this laptop turned out not to be the machine I thought it was. The
+                first, in the first post, was the single DIMM. And having found two, I wrote the check I
+                should have run on day one. It's <code>precheck.py</code> in the repository, and this is its
+                output on this laptop, plugged in, on a quiet-ish morning.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">python scripts/precheck.py</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code>{{PRECHECK_AC}}</code></pre>
+            </div>
+
+            <p>
+                It takes under a minute, most of which is the bandwidth test and one short llama-bench run.
+                Every line of it is a thing that changed a number in one of these two posts. Here's the same
+                list as a checklist, with why each item matters and what to do about it, for machines that
+                aren't mine.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Check</th>
+                            <th>Why it matters</th>
+                            <th>What to do</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Power source and GPU power limit</td><td>On battery this laptop's GPU ran at {{PL_BATTERY}} of {{PL_DEFAULT}} W and decode fell 3 to 5x. Quiet or silent fan profiles do the same on AC.</td><td>Plug in. Read <code>nvidia-smi -q -d POWER</code> and compare the current limit with the default. Record it with every result.</td></tr>
+                        <tr><td>Memory channels and speed</td><td>The single biggest term in the CPU ceiling. One DIMM halves it.</td><td>Count DIMMs, read their speed, compute the theoretical GB/s. If a slot is empty, that's the cheapest upgrade you'll find.</td></tr>
+                        <tr><td>Measured bandwidth</td><td>Achieved is 60 to 80% of theoretical. The gap tells you whether tuning can help.</td><td>Run the streaming test and a small llama-bench; use the higher number as your line.</td></tr>
+                        <tr><td>Core topology</td><td>Hybrid Intel parts default to using E-cores, which cost 5 to 50% on decode depending on load. SMT doesn't add bandwidth.</td><td>Find the P-core count. Set <code>-t</code> to it. Measure 4, 6, 8 too; four cores with SMT matched eight without in the first post.</td></tr>
+                        <tr><td>Instruction set and CPU kernels</td><td>No AVX at all means the sse42 or x64 kernels, where K-quants lose their fast paths and prompt processing is 2 to 3x slower; AVX without AVX2 means the sandybridge kernels, which keep the K-quant ordering. AVX-512 and AMX builds exist but the loader has to pick them.</td><td>Run llama-bench with <code>-v</code> and read which <code>ggml-cpu-*</code> library loaded. If it's not the one you expected, that's your first bug.</td></tr>
+                        <tr><td>VRAM free, not total</td><td>Other processes hold VRAM. Weights plus context cache plus compute must fit, or Windows spills into system RAM without an error and speed falls 4x.</td><td><code>nvidia-smi --query-compute-apps</code>. Do the arithmetic with the KV bytes per token from the chart above and your real context length.</td></tr>
+                        <tr><td>Background load</td><td>Prompt processing swung 172 to 483 tok/s on this machine in one hour with the same command.</td><td>Look at CPU use before a run. Compare settings back to back, never across sessions. Report the load with the number.</td></tr>
+                        <tr><td>Operating system</td><td>Windows: silent VRAM spill, no E-core exclusion, OpenMP threadpool. Linux: E-cores excluded by default, direct I/O available. macOS: unified memory, so the DIMM line is the GPU line too.</td><td>Know which of the first post's chapters apply. The threads chapter is Windows-specific; the bytes model isn't.</td></tr>
+                        <tr><td>Model file identity</td><td>Two files with the same name can have different tensor counts, tied or separate heads, different quant mixes. The first post found 310 versus 311 tensors across "the same" Qwen3-0.6B.</td><td>Read the tensor list. <code>zoo_meta.py</code> prints head share, expert counts and KV bytes per token in one line.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Reconciling two days of GPU numbers</h3>
+            <p>
+                One consequence of writing the check after the first post rather than before it: the first
+                post's GPU numbers are lower than today's. Yesterday, Qwen3-8B at full offload decoded at
+                {{B1_8B_GPU}} tok/s and the 0.6B at {{B1_06_GPU}}. Today, plugged in and with the same
+                commands, they do {{NOW_8B_GPU}} and {{NOW_06_GPU}}, which is {{GPU_8B_GAP_PCT}}% more for
+                the 8B and puts it at {{NOW_8B_EFF}} GB/s, {{NOW_8B_PCT}}% of the card's 384 rather than the
+                {{B1_8B_PCT}}% I reported. I can name two differences and can't rule out a third. Yesterday
+                two other llama-server processes held about a gigabyte of VRAM throughout, which put the 8B
+                at the edge of the card; today they held nothing. Yesterday the CPU was under heavy
+                background load, and I tested today what that does: running a 16-thread CPU benchmark
+                alongside the GPU run cost the 8B {{BOOST_8B_ALONE}} against {{BOOST_8B_LOAD}} tok/s and the
+                0.6B {{BOOST_06_ALONE}} against {{BOOST_06_LOAD}}, a few percent, not thirty. The third
+                candidate is the GPU power limit, which moves on this laptop between {{PL_DEFAULT}} and
+                115 W depending on things I don't fully control, and which I didn't record yesterday. That's
+                the whole reason the pre-check prints it. The first post's conclusions don't change; the
+                curves and the comparisons were all within-session. But the absolute GPU numbers there
+                should be read as "this card on that day", and if you rerun them plugged in on a quiet
+                machine, expect higher.
+            </p>
+            <p>
+                With the machine actually known, bandwidth measured, cores counted, kernels identified,
+                VRAM arithmetic done, the question becomes practical: given what you found, what do you try
+                first?
+            </p>

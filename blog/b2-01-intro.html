@@ -1,0 +1,57 @@
+            <h2>What people asked after the first post</h2>
+            <p>
+                The <a href="./blog-1.html">first post</a> took one small model and one laptop and measured
+                every knob llama.cpp has. The questions it left me with are the same ones I get at work, in
+                different clothes. "Our model is a mixture of experts, does the head trick still apply?" "We
+                ship on a thin client with no AVX2, which of those numbers survive?" "Does any of this hold
+                for an embedding model, or for Whisper?" "It's a Mac, is the GPU chapter useless?" Fair
+                questions. The first post was honest about being one machine and one model, and one machine
+                and one model is exactly what nobody else has.
+            </p>
+            <p>
+                So this is the second half. It's not another benchmark dump. It's the part I should have
+                written first, the part the first post's closing section only gestured at: what actually carries over from one machine to another, what changes when the
+                model has a different shape inside, and what order to try things in when you sit down at a box
+                you've never tuned. I did go back to the bench for it, because the honest way to say "this
+                generalizes" is to try it on models that are built differently and see. Six small models of
+                six architectures went through the same three tests on the CPU and the GPU. Where I measured,
+                I say measured. Where I computed from a file's metadata, I say computed. Where I'm repeating
+                something other people have reported and I haven't checked, I say that too, and you should
+                treat it as a thing to test, not a thing to trust.
+            </p>
+            <p>
+                The flow is deliberate. Each section ends on the question the next one answers, because that's
+                how the work actually goes: you learn the ceiling, then you ask why you're under it, then you
+                ask what it costs to move, then you ask whether the machine is even what you think it is.
+                Read it straight through once, then keep it open as a checklist.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>The question it answers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>One number that transfers</td><td>What can I predict about a machine I haven't touched?</td></tr>
+                        <tr><td>What's inside the file decides the bytes</td><td>How do dense, MoE, hybrid, SSM, encoder-decoder and encoder-only models change that prediction?</td></tr>
+                        <tr><td>Context is bytes too</td><td>Why does the same model get slower as the conversation grows, and by how much per architecture?</td></tr>
+                        <tr><td>Accuracy: measure it in ten minutes</td><td>Fewer bytes is faster; how do I know what it cost, on my model, without a day of compute?</td></tr>
+                        <tr><td>Pre-checks</td><td>Is this machine actually the machine I think it is? (Mine wasn't, twice.)</td></tr>
+                        <tr><td>The order of things to try</td><td>Given the device class, what do I try first, second, third, and what do I skip?</td></tr>
+                        <tr><td>Past the ceiling</td><td>When is speculative decoding worth it, by workload and by device?</td></tr>
+                        <tr><td>When to write code</td><td>When do custom kernels, layers or drivers pay, and how do I tell before writing them?</td></tr>
+                        <tr><td>A protocol for a new box</td><td>How do I do all of this in an hour and write it down so it's still useful next month?</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Everything here was produced by scripts in the same
+                <a href="https://github.com/inboxpraveen/ggml-inference-lab" target="_blank" rel="noopener noreferrer">companion repository</a>
+                as the first post: <code>zoo.sh</code> for the architecture runs, <code>zoo_meta.py</code>
+                for the file metadata, <code>precheck.py</code> for the machine checks, <code>charts2.py</code>
+                for the figures. The build is the same prebuilt llama.cpp b10941 as before, no compiler.
+            </p>

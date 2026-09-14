@@ -1,0 +1,129 @@
+            <h2>Accuracy: measure it in ten minutes</h2>
+            <p>
+                The first post scored twenty-one quantization variants of one model with KL divergence
+                against BF16 over 200 chunks of wikitext-2, and that run took most of a day and 15 GB of
+                stored logits. Nobody is going to do that for every model they consider, and they shouldn't
+                have to. This section is about what that run taught me that transfers, and how to get the
+                part of it you need in about ten minutes.
+            </p>
+            <p>
+                First, the method, because the choice of metric matters more than people think. Perplexity
+                on its own is a bad way to compare quantizations: a quant can lower the perplexity on a test
+                set by accident while making the model's distribution less like the original's. KL
+                divergence measures the second thing directly. For every token position, it compares the
+                quantized model's full probability distribution over the vocabulary with the reference
+                model's, and averages. Zero means identical. It comes with two companions that are easier to
+                explain to a non-specialist: the fraction of positions where the quant's most likely token
+                matches the reference's, and the RMS change in the probability the quant assigns to the
+                token that actually came next. llama.cpp's <code>llama-perplexity</code> produces all three
+                from one run if you first save the reference model's logits.
+            </p>
+            <p>
+                What the full run said, briefly, since the numbers are in the first post: Q8_0 is free
+                (KLD {{KLD_Q8}}), Q6_K nearly so ({{KLD_Q6}}), Q4_K_M is where you start to notice
+                ({{KLD_Q4KM}}, top-1 agreement {{TOP1_Q4KM}}%), Q3_K_M is a different model ({{KLD_Q3KM}}) and
+                Q2_K on a 0.6B agrees with the reference on the next token barely more than half the time
+                ({{KLD_Q2K}}, {{TOP1_Q2K}}%). On which tensors are sensitive: quantizing only the head to
+                Q6_K costs nothing ({{KLD_HEADQ6}}); to Q4_K it costs about a third of what quantizing the
+                whole body would ({{KLD_HEADQ4}}); quantizing the attention projections to Q4_K
+                ({{KLD_ATTNQ4}}) is about as bad as quantizing the much larger feed-forward weights to Q4_K
+                ({{KLD_FFNQ4}}), so per byte saved the attention is the expensive place to cut; and putting
+                a Q8_0 head on a Q4_K_M body ({{KLD_Q4KM_Q8HEAD}}) recovers a real fraction of the damage for
+                a small cost in bytes.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/kld-vs-bytes.svg" alt="Scatter plot of mean KL divergence on a log scale against weight bytes per token for twenty-one variants of Qwen3-0.6B, from Q2_K at the top left to Q8_0 at the bottom right, colour-coded by whether the standard mix, the head, or attention and feed-forward layers were changed." loading="lazy" decoding="async">
+                <figcaption>From the first post: every variant of one model. The shape of this curve is what transfers; the exact numbers don't.</figcaption>
+            </figure>
+
+            <h3>What transfers, and what doesn't</h3>
+            <p>
+                The shape transfers. Every published KLD table I've read has the same knee between 5 and 4
+                bits per weight and the same cliff below 3, and mine did too; that's reported plus one
+                measurement, not a law. The absolute numbers don't. A 0.6B model has
+                less redundancy than an 8B and the same quant costs it more; the widely reported rule is that
+                bigger models tolerate lower bits, and the first post's KLD table is consistent with it but
+                doesn't prove it, since it's one model. The per-tensor findings are the ones I'd carry over
+                with the most confidence, because they follow from structure rather than size: the head is a
+                lookup that every token pays for, attention projections are small and sensitive, feed-forward
+                weights are big and forgiving. For a MoE, the reported pattern is that expert weights tolerate
+                lower bits than the shared layers do; it's plausible for the same structural reason and I
+                haven't measured it. For an embedding model, KL divergence over next-token distributions is
+                the wrong tool altogether, since the model doesn't predict tokens; measure retrieval quality
+                on your own queries instead.
+            </p>
+            <p>
+                Which means the honest answer to "is this quant safe for my model" is always "run the
+                test", and the test needs to be cheap enough that you actually will.
+            </p>
+
+            <h3>The short recipe</h3>
+            <p>
+                The expensive part of the full run is the base file: 200 chunks, the second 256 tokens of
+                each scored (the first half is context), times a 152K vocabulary of 16-bit logits, is
+                15.5 GB. The cheap version uses 20 chunks. On my GPU the
+                base took five seconds to produce and each variant scored against it in under four. On a CPU
+                multiply by ten or so. The base file is {{KLD20_BASE_GB}} GB.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">KL divergence in ten minutes</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="comment"># reference logits, once per model, from the best file you have (BF16 or F16)</span>
+llama-perplexity -m model-BF16.gguf -f wiki.test.raw -c 512 --chunks 20 --kl-divergence-base base-20.kld
+
+<span class="comment"># each candidate, a few seconds each; --chunks is taken from the base file from here on</span>
+llama-perplexity -m model-Q4_K_M.gguf -f wiki.test.raw -c 512 --kl-divergence-base base-20.kld --kl-divergence
+<span class="comment">#   read: "Mean KLD", "Same top p", "RMS Δp"</span></code></pre>
+            </div>
+
+            <p>
+                How much do you give up with 20 chunks instead of 200? I did both. Q4_K_M scored
+                {{KLD20_Q4KM}} &plusmn; {{KLD20_Q4KM_ERR}} on the short base against {{KLD_Q4KM}} on the full
+                one, {{KLD20_Q4KM_DIFF}}% lower. Q8_0 scored {{KLD20_Q8}} &plusmn; {{KLD20_Q8_ERR}} against
+                {{KLD_Q8}}, {{KLD20_Q8_DIFF}}% lower. The full run's log also prints its running mean after every
+                chunk, so I could see how the estimate settles for the other variants without rerunning
+                anything.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Variant</th>
+                            <th>After 5 chunks</th>
+                            <th>After 20</th>
+                            <th>After 40</th>
+                            <th>After 200</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{KLD_CONV_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The mean drifts up a little as more chunks come in, by 5 to 10%, because the later parts of
+                the test set are harder text. The ranking never changes, and the gaps between variants are
+                ten times larger than the drift. If your question is "which of these three files should I
+                ship", 20 chunks answers it. If your question is "is this 0.0027 or 0.0029", it doesn't, and
+                you probably don't have that question.
+            </p>
+            <p>
+                Two things to watch. The reference should be the least-quantized file you can get, and if
+                the only file is Q8_0 then you're measuring distance from Q8_0, not from the model, which is
+                fine as long as you say so. And the text should be something like what you'll run: wikitext
+                is a convention, not a law, and a quant that's fine on encyclopedia prose can be worse on
+                code or on a language the model is weaker in. If you have your own prompts, a few hundred
+                lines of them make a better test file than wikitext does.
+            </p>
+            <p>
+                At this point you know the ceiling for a machine, the bytes for a model, what context adds,
+                and what a quant costs. Before you touch a single flag, there's one more question, and I'd
+                put it first if the logic of the post allowed it: is the machine in front of you actually the
+                machine you think it is?
+            </p>

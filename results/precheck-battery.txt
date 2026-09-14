@@ -1,0 +1,41 @@
+
+== OS and power
+Windows 10 (AMD64)
+battery present, on AC: False
+Power Scheme GUID: 27fa6203-3987-4dcc-918d-748559d549ec  (Performance)
+
+== CPU
+Intel(R) Core(TM) i7-14650HX  physical cores=16 logical=24
+ISA: sse4_2 avx avx2 fma f16c
+ggml-cpu variants in bin/cpu: alderlake, cannonlake, cascadelake, cooperlake, haswell, icelake, ivybridge, piledriver, sandybridge, sapphirerapids, skylakex, sse42, x64, zen4; the loader scores each and keeps the best
+
+== Memory
+1 DIMM(s), 16 GB total, 5600 MT/s, 64-bit each: theoretical 44.8 GB/s
+free now: 4.0 GB
+streaming read, 1 process(es):   4.6 GB/s
+streaming read, 4 process(es):  19.9 GB/s
+streaming read, 8 process(es):  25.4 GB/s
+best is 57% of theoretical; 60 to 80% is normal for this kind of test
+decode ceilings at that bandwidth: 633 MB model 40 tok/s, 2 GB 13 tok/s, 4 GB 6.4 tok/s, 8 GB 3.2 tok/s
+
+== GPU
+NVIDIA GeForce RTX 5060 Laptop GPU, 8151 MiB, 0 MiB, 3090 MHz
+power limit now 24.00 W, default 55.00 W
+free VRAM: 8151 MiB. Weights + n_ctx x KV bytes/token + ~10% compute must fit; on Windows an overflow spills to system RAM silently.
+other CUDA processes:
+  41160, C:\LeadForge\bin\llama-cuda\llama-server.exe
+  38192, C:\LeadForge\bin\llama-cuda\llama-server.exe
+  8968, C:\Users\inbox\AppData\Local\Programs\cursor\Cursor.exe
+
+== Background load
+CPU busy now: 21%
+
+== Model fit: Qwen3-8B-Q6_K.gguf
+file 6414 MiB; add n_ctx x KV bytes per token (zoo_meta.py prints it per model) and ~10% for compute buffers, then compare with the free figures above
+
+== Warnings
+ - ON BATTERY: the GPU power limit drops to a fraction of its default and CPU turbo is cut. Plug in before measuring anything.
+ - HYBRID CPU: the 16 "physical cores" include E-cores. llama.cpp defaults -t to all of them; set -t to the P-core count and measure.
+ - SINGLE CHANNEL: one DIMM populated. A second DIMM is the cheapest 2x for decode there is.
+ - GPU POWER CAPPED at 24.00 W (default 55.00 W): battery or a quiet profile. Everything on the GPU runs at a fraction of its speed.
+ - MACHINE BUSY (21% CPU; top by CPU time: qemu-system-x86_64-headless, ChatGPT, ChatGPT, com.docker.backend). Only paired, back-to-back comparisons will mean anything.

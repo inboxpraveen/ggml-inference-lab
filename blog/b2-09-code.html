@@ -1,0 +1,89 @@
+            <h2>When to write code</h2>
+            <p>
+                I went into the first post expecting to write a Cython decode loop and come out with a
+                number. I came out with a cffi binding to llama.dll, a Python loop, and the finding that the
+                loop's overhead was tens of microseconds against a decode step of 27 milliseconds on the CPU
+                and 3.5 on the GPU. There was nothing for compiled code to recover, because the time wasn't in
+                the loop. It was in the memory bus. That's the general shape of the answer: custom code pays
+                when the stock path is doing something other than reading the weights as fast as the
+                hardware allows, and you can only know that by looking at where the time goes.
+            </p>
+            <p>
+                Here is how to tell, in order of how cheap the test is.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Symptom</th>
+                            <th>What it means</th>
+                            <th>What custom code could do</th>
+                            <th>Worth it?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Effective bandwidth is at the line (within 15% of measured streaming read)</td><td>Decode is reading weights as fast as the memory system allows</td><td>Nothing, short of reading fewer bytes</td><td>No. Change the quant or the machine.</td></tr>
+                        <tr><td>Effective bandwidth is well under the line on the CPU, and threads and kernels are right</td><td>Some operation is compute-bound or badly parallelized: a scan, an unusual activation, a tensor type without a fast path</td><td>A kernel for that op or type</td><td>Maybe. Profile first; the op has to be a big share of the step.</td></tr>
+                        <tr><td>Small model on a GPU, speed flat across quants</td><td>Launch-bound: the graph is hundreds of small kernels</td><td>Fewer launches: fusion, CUDA graphs (already on), or a bigger batch through speculation</td><td>Fusion is real work inside ggml; speculation is a flag. Try the flag.</td></tr>
+                        <tr><td>Prompt processing far below the GPU's or CPU's compute peak</td><td>Batch too small, or a matmul path that isn't using the fast instructions (VNNI, AMX, tensor cores)</td><td>Check <code>-ub</code> and the loaded kernels before writing anything</td><td>Rarely. This is usually configuration.</td></tr>
+                        <tr><td>Time between tokens is spent outside decode (tokenizer, sampler, HTTP, JSON)</td><td>The host side is the bottleneck, common on very fast GPUs with small models</td><td>A leaner driver loop, batched sampling, a sampler in C</td><td>Sometimes, on a launch-bound GPU with a big vocabulary. Measure the driver against llama-server first.</td></tr>
+                        <tr><td>Many users, many sequences</td><td>Batching across sequences reads the weights once for all of them</td><td>A server that batches: llama-server already does this with slots</td><td>Use the server. Custom code here is reinventing it.</td></tr>
+                        <tr><td>Repeated prefixes across requests (system prompts, RAG context)</td><td>Prompt processing being paid again for the same tokens</td><td>Prefix caching, KV reuse across requests</td><td>Yes, and llama-server has it; a custom driver can do it more precisely for a known workload.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The first row is the one that applies most of the time, and it's the reason I'd tell anyone
+                to run the pre-check and the bandwidth arithmetic before opening an editor. If the effective
+                bandwidth of a decode step is at the line, no kernel makes it faster, because the kernel is
+                not what's slow. A very good kernel and a mediocre one read the same bytes. On this laptop
+                the dense models sit at the line already, and that's with a prebuilt binary and no tuning
+                beyond the thread count. The stock kernels are good. The stock kernels have had years of
+                people with exactly your hardware improving them.
+            </p>
+            <p>
+                The second row is where custom kernels legitimately live, and the zoo gave one small example
+                of it: the two state-space models sat about 10 to 15% under the line on the CPU, because the
+                selective scan does per-token work that isn't a matrix multiply, and on the GPU Mamba was the
+                most launch-bound model of the six. If you were shipping a Mamba-family model on a CPU and
+                needed that 15%, a fused scan kernel is the kind of thing that could get it, and ggml's CPU
+                backend is a readable place to add one: each op has a compute function per tensor type, the
+                threading is a work-split across rows, and the build picks the instruction set. The honest
+                cost is that you're now maintaining a fork of a fast-moving project, and the honest test is a
+                profile showing the op you'd rewrite is a large share of the step. llama.cpp's own tools
+                give you most of it: <code>llama-bench</code> for the totals, <code>GGML_SCHED_DEBUG=1</code> in the
+                environment to print how the graph was split across backends and which ops landed where,
+                and for per-op timing a build with profiling enabled or a sampling profiler on the process,
+                which on Windows means WPA or VTune and on Linux means perf. Take the profile before the
+                decision, not after.
+            </p>
+            <p>
+                The rows about the host side are where a driver of your own earns its keep, and it's control
+                rather than raw speed. The first post's driver matched llama-server's speed and then beat it
+                on the editing workload by being able to set the n-gram parameters the server's defaults had
+                wrong for that task. That's the pattern: the stock tools cover the general case well, and a
+                thin layer over the library lets you specialize the parts your product actually does, which
+                for a real-time product is usually prompt reuse, draft policy, sampling constraints and
+                batching of the specific requests you get. None of that is a kernel. All of it is a few
+                hundred lines against a stable C API, and it survives llama.cpp updates in a way a fork of
+                the kernels doesn't.
+            </p>
+            <p>
+                Layers are the other thing people ask about, and the answer is shorter. Changing which layers
+                live where (GPU, CPU, the split between attention and feed-forward) is a flag, and the first
+                post measured it. Changing what the layers compute is a different model, and that's fine
+                tuning or distillation, not inference engineering. The one layer-level trick that is
+                inference engineering, quantizing tensors to different precisions by role, is also a flag,
+                <code>--tensor-type</code> in llama-quantize, and the first post's accuracy table is the
+                guide to using it. There's no layer to write.
+            </p>
+            <p>
+                So the summary is unglamorous. Custom code pays when a profile shows the stock path off the
+                line for a reason you can name, or when the product needs control the tools don't expose.
+                It doesn't pay as a first move, and it never pays before the pre-check. Which leaves the
+                practical question this whole post has been circling: what does a first hour on a new machine
+                actually look like, and how do you write it down so the numbers are still worth something
+                next month?
+            </p>

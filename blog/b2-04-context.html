@@ -1,0 +1,103 @@
+            <h2>Context is bytes too</h2>
+            <p>
+                The first post measured the 0.6B slowing down as its context filled and found that a
+                quantized KV cache overtook f16 past 8K tokens on the GPU. Here's the mechanism in bytes. For
+                every layer that has attention, the model stores a key and a value vector for every token
+                it has seen, and reads all of them back on every step. The size per token is two vectors,
+                times the number of key-value heads, times the head dimension, times bytes per element,
+                times the number of attention layers. That last factor is the one architecture controls.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/kv-per-token.svg" alt="Horizontal bars of KV cache kilobytes per token of context for ten models: Llama-2-7B at 512, Llama-3-8B at 128, Qwen3-8B at 144, Qwen3-0.6B at 112, Granite MoE at 48, Gemma-3-1B global layers at 4, DeepSeek-V3 with MLA at 69, LFM2 at 12, Falcon-H1 at 18, Mamba at zero." loading="lazy" decoding="async">
+                <figcaption>KV cache bytes per token of context at f16. Grey bars are computed from published configs, coloured bars from the GGUF files. Multiply by your context length and add it to the weights to get bytes per token at depth.</figcaption>
+            </figure>
+
+            <p>
+                The spread is enormous. A Llama-2-7B with full multi-head attention stores 512 KB per token,
+                4 GB at 8K context, more than half its own weights at Q4. Grouped-query attention, which
+                every current dense model uses, cuts that four to eight times: Qwen3-8B stores {{Q8B_KV_KB}} KB
+                per token. The small Qwen3 stores {{Q06_KV_KB}} KB, which sounds small until you multiply by
+                8,192 and get {{Q06_KV_8K_MB}} MB, more than the 633 MB of weights. DeepSeek's latent
+                attention compresses the whole thing to a 576-wide vector per layer. Gemma-3's local layers
+                stop growing at 512 tokens, so only its four global layers grow. The hybrids grow only in
+                their attention layers. Mamba doesn't grow at all.
+            </p>
+            <p>
+                Now the measurement. Every zoo model, decoding 32 tokens after 0, 2K and 8K tokens of
+                context, on both devices, default flags.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/zoo-depth.svg" alt="Line chart of decode speed as a percentage of empty-context speed at 0, 2K and 8K tokens on the CPU. Qwen3-0.6B falls to 21 percent, Granite MoE to 40, Falcon-H1 to 69, LFM2 to 80, Gemma-3-1B to 92, Mamba stays flat." loading="lazy" decoding="async">
+                <figcaption>CPU, eight threads, measured. The order matches the KV chart exactly: the more cache per token, the steeper the fall.</figcaption>
+            </figure>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-2/zoo-depth-cuda.svg" alt="The same chart on the RTX 5060. Qwen3-0.6B falls to 51 percent at 8K, Granite to 64, and the other four are flat within the noise of a two-repetition run." loading="lazy" decoding="async">
+                <figcaption>The GPU, same runs. Same ordering, smaller drops, because 384 GB/s makes a gigabyte of cache a smaller fraction of the step.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>CPU at 0</th>
+                            <th>CPU at 2K</th>
+                            <th>CPU at 8K</th>
+                            <th>GPU at 0</th>
+                            <th>GPU at 2K</th>
+                            <th>GPU at 8K</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{DEPTH_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                On the CPU at 8K tokens the dense Qwen3 keeps {{Q06_CPU_8K_PCT}}% of its speed. Bytes alone
+                don't predict that: {{Q06_KV_8K_MB}} MB of cache on top of 633 MB of weights is 2.5x the
+                traffic, which would leave 40%, so about half the loss is bytes and the other half is the
+                attention arithmetic itself, a dot product against every one of 8,192 positions per head
+                per layer, which on eight cores is no longer free. The Granite MoE keeps
+                {{GRA_CPU_8K_PCT}}% against a bytes-only prediction of 54%, the same split. That's also
+                why the fused attention kernel matters more at depth than at zero, which the first post
+                found and which I come back to below. The hybrids keep {{FAL_CPU_8K_PCT}}% and
+                {{LFM_CPU_8K_PCT}}%. Gemma-3, with only four growing layers, keeps {{GEM_CPU_8K_PCT}}%. Mamba
+                is flat, and I'd add that its 2K and 8K points came out slightly above its zero point, which
+                is repeat-to-repeat noise on a two-repetition run and not a sign that recurrent models get
+                faster with context. The GPU shows the same ordering with smaller drops, Qwen3 to
+                {{Q06_CUDA_8K_PCT}}%, Granite to {{GRA_CUDA_8K_PCT}}%, Gemma to {{GEM_CUDA_8K_PCT}}%.
+            </p>
+            <p>
+                These runs used default flags, which on the CPU means flash attention on. The first post
+                found that on this CPU the plain attention path is faster at depth than the fused one, and
+                since half of the loss above is attention compute rather than bytes, the dense CPU number
+                here is the pessimistic case; with <code>-fa off</code> it would fall less.
+                I left the defaults on for the zoo so the comparison across architectures was fair, not so
+                each one was at its best.
+            </p>
+            <p>
+                What to do with this depends on which kind of model you have. On a dense GQA model, the
+                levers are the ones from the first post: a q8_0 KV cache halves the cache bytes and, past a
+                few thousand tokens, that shows up directly in speed, and on a CPU try flash attention off
+                at depth. On a MoE the same applies, and the cache is a bigger share of the total than the
+                small active-weight footprint suggests. On a sliding-window model there's little to do, and
+                that's the point of the design. On a hybrid or SSM, the growth is small or nil, but the
+                constant state per sequence isn't free either, and if you run many parallel sequences on a
+                server it multiplies by the slot count the same way a cache does. Whatever the model, the
+                arithmetic is the same: weights bytes plus context bytes, divided into the bandwidth. If
+                that sum doesn't fit in the fast device's memory, the first post's Windows chapter applies
+                and the driver will spill silently; the 8B in that post went from {{FD_99_D4K}} tok/s at 4K
+                context to {{FD_99_D8K}} at 8K for exactly that reason, and a q8_0 cache brought it back to
+                {{FD_Q8KV_D8K}}.
+            </p>
+            <p>
+                Everything so far has been about reading fewer bytes to go faster: smaller quant, quantized
+                cache, active experts, fewer attention layers. Each one changes what the model computes. The
+                obvious next question is what it costs, and whether you can find out on your own model in less
+                than a day.
+            </p>
