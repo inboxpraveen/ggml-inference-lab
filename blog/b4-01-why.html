@@ -1,0 +1,136 @@
+            <h2>The model is right and the language is wrong</h2>
+            <p>
+                The last three posts were about getting tokens out of a machine faster. This one starts a
+                step earlier, with a problem that speed doesn't touch. You have found the model you want. It's
+                small enough to run where you need it, it's fast on the hardware you have, its licence is fine,
+                and its English is good. Then you type a sentence in your own language and it produces
+                nothing usable. Not slow, not wrong in an interesting way; just noise, because the model has
+                never seen the language, and the tokenizer under it has never seen the script.
+            </p>
+            <p>
+                For me the language is Hindi and the model is SmolLM2-135M, Hugging Face's smallest text
+                model. It was trained on {{SRC_SMOLLM2_TOKENS_135M}} tokens, which is a serious budget for
+                135 million parameters, and the paper's data section is titled, in full,
+                "{{SRC_SMOLLM2_WEB_DATA_SECTION_TITLE}}". Nothing in it is Hindi on purpose. Here is what that
+                looks like from the outside, measured before anything else in this post was done. A thousand
+                held-out Hindi web documents cost the stock tokenizer {{TPW_STOCK_HI}} tokens per word against
+                {{TPW_STOCK_EN}} per English word, a {{TPW_RATIO_STOCK}}x tax on every prompt and every
+                generated token. The model's loss on that Hindi text, expressed in bits per character so that
+                the number doesn't depend on the tokenizer, is {{BPC_STOCK_HI}}; on English text from the
+                distribution it was trained on it's {{BPC_STOCK_EN}}. (The two languages aren't directly
+                comparable in bits per character either, but a factor of nearly three is not a subtlety.)
+                And when asked, in Hindi, what the capital of India is, greedy decoding gives one real Hindi
+                word repeated until the length limit; asked to judge a phone review, it gives a string of
+                Devanagari digits.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/fertility.svg" alt="Horizontal bar chart of tokens per word on Hindi and English for eight tokenizers. SmolLM2 5.32 Hindi, 1.33 English; Qwen2.5 4.51; Llama 3.2 2.57; Gemma 3 1.35; Sarvam-1 1.44; SmolLM2 extended with 8k, 16k and 29k Hindi tokens: 1.41, 1.31, 1.25, with English unchanged at 1.33." loading="lazy" decoding="async">
+                <figcaption>Tokens per whitespace-separated word on 1,000 held-out documents in each language. The English bars are almost identical across tokenizers; the Hindi bars span a factor of four. The three blue rows are the extended tokenizers built later in this post, and their English number is unchanged by construction.</figcaption>
+            </figure>
+
+            <p>
+                The obvious fix is to pick a different model, and the chart says why that isn't as easy as it
+                sounds. Tokenizer size is not language coverage. Qwen2.5's vocabulary is three times the size
+                of SmolLM2's and it still spends {{TPW_QWEN_HI}} tokens per Hindi word. Llama 3.2's 128k
+                vocabulary, with its 28k tokens set aside for other languages, gets to {{TPW_LLAMA_HI}}. Only
+                two of the stock tokenizers here treat Hindi about as well as English: Gemma 3, which inherits
+                Gemini's 262k-entry SentencePiece model, and Sarvam-1, a 2B model built in India with a
+                tokenizer designed for Indic scripts first. Neither is 135M parameters. And a tokenizer that
+                handles the script is only the entry ticket; the model behind it also has to have read enough
+                of the language. The next chart is the same held-out Hindi text scored by every stock model I
+                could fit on this GPU.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/bpc-sizes.svg" alt="Scatter of Hindi bits per character against parameter count on a log axis for stock models: SmolLM2 135M, 360M and 1.7B, Qwen2.5 0.5B and 1.5B, Qwen3 0.6B and 1.7B, and Sarvam-1 at 2.5B, plus this post's adapted 135M model marked in blue." loading="lazy" decoding="async">
+                <figcaption>Hindi bits per character on {{EVAL_DOCS}} held-out FineWeb-2 documents (the first 1,500 characters of each). Lower is better. Size helps, but the model built for the language sits well below the trend, and the blue diamond is where this post's 135M ends up.</figcaption>
+            </figure>
+
+            <p>
+                So this post is about the other option: keep the model you chose and teach it the language.
+                The process has a name, language adaptation, and a shape that has been stable since the
+                Chinese-LLaMA work in {{SRC_CHINESE_LLAMA_DATE}}: add tokens for the new script to the
+                vocabulary, give the new rows of the embedding table sensible starting values, continue
+                pretraining on text in the language while feeding back a little of the original language so
+                the model doesn't forget it, and then do the post-training that turns a text predictor into
+                something that answers. I wanted to know how much of that pipeline fits on one laptop with an
+                8 GB GPU, how much of the published recipe survives contact with a model this small, and which
+                of the choices along the way actually move the number. Everything below was run on the same
+                machine as the first two posts, an RTX 5060 laptop GPU that manages {{TFLOPS_BF16}} TFLOPS of
+                bf16 matrix multiplication when it's warm, with every number written to a results file by the
+                script that produced it.
+            </p>
+            <p>
+                A note on what I'm claiming, because the blue diamond in that chart is the kind of point
+                that invites overclaiming. One afternoon of training on a laptop does not produce a Hindi
+                model that beats a model ten times its size at everything, and the post has two charts that
+                say so: one on Hindi text the model never saw, where the margin over the best general-purpose
+                stock model under 2B shrinks to a couple of hundredths of a bit, and one on a task where the newest 1.7B is level with it.
+                What it does produce is a 135M model that reads Hindi text about as well as general-purpose
+                stock models twelve times its size, answers a Hindi classification task in a fixed format
+                as well as the best of them, a loss curve that hadn't flattened when I stopped, and a recipe
+                where every stage is a short script you can read. The interesting part is the shape of the
+                curve, what each stage cost, and what went wrong in the last one.
+            </p>
+
+            <h3>The result in one screen</h3>
+            <p>
+                For the reader who wants the outcome before the method: the same model, measured before and
+                after, on data it never trained on. Every number in this table is explained and re-measured
+                in the section that produces it.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Measured on held-out data</th>
+                            <th>Stock SmolLM2-135M</th>
+                            <th>After this post</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Tokens per Hindi word (English unchanged at {{TPW_STOCK_EN}})</td><td>{{TPW_STOCK_HI}}</td><td>{{TPW_16K_HI}}</td></tr>
+                        <tr><td>Hindi text, bits per character: web crawl / Wikipedia (lower is better)</td><td>{{BPC_STOCK_HI}} / {{WIKI_STOCK_HI}}</td><td>{{BPC_MAIN_HI}} / {{WIKI_MAIN_HI}}, under every general-purpose stock model up to 1.7B</td></tr>
+                        <tr><td>"What is the capital of India?", asked in Hindi</td><td>one word repeated until the length limit</td><td>{{SAMPLE_CAPITAL_FINAL}}</td></tr>
+                        <tr><td>Hindi sentiment, answered as JSON, {{N_SENT_TEST}} reviews</td><td>{{TASK_INSTRUCT_ACC}} accuracy, valid JSON in {{TASK_INSTRUCT_FMT}} of answers (the stock instruct model)</td><td>{{TASK_GRPOV2T07_ACC}} accuracy, valid JSON in {{TASK_GRPOV2T07_FMT}} of answers; Qwen3-1.7B scores {{TASK_QWEN3_17_ACC}}</td></tr>
+                        <tr><td>GPU time for the pipeline that produced it</td><td></td><td>{{RUN_MAIN_MIN}} min continued pretraining, {{SFT_MIN}} min SFT, {{GRPO_V2_T07_MIN}} min GRPO, on an 8 GB laptop GPU</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The pipeline that did it is the one the labs run, in the order they run it: extend the
+                tokenizer, initialise the new embeddings, continue pretraining on the language with a little
+                of the old one mixed in, fine-tune on instruction pairs, then reinforcement learning against
+                rewards a script can check. The papers in the next section are the same five stages with
+                more zeros on the token counts. That's also the honest answer to "what would it take to
+                scale this": more Hindi tokens, since the curve in the continued pretraining section is
+                still paying when I stop; more GPUs for that stage, which changes how many copies of the
+                training loop run in parallel and nothing inside the loop; and a larger model to start
+                from. The tokenizer method, the replay, the cold start and the reward-checking stay as they
+                are. What a lab adds on top is data cleaning at a scale I can't do and people to label
+                preferences, which is the one stage this post skips on purpose.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>The question it answers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>How the large labs do it</td><td>What pretraining, continued pretraining, supervised fine-tuning and reinforcement learning each are, in the order they actually happen, and which parts need a thousand GPUs and forty annotators.</td></tr>
+                        <tr><td>The plan for one GPU</td><td>The same five stages sized for 8 GB of memory and an afternoon.</td></tr>
+                        <tr><td>The tokenizer</td><td>Why a byte-level BPE tokenizer built for English can't form a Hindi word even in principle, and how to add 16,000 tokens without changing a single English token.</td></tr>
+                        <tr><td>New embeddings</td><td>How to fill 16,000 new rows of the embedding table so the model doesn't start from noise, measured three ways.</td></tr>
+                        <tr><td>Continued pretraining</td><td>Fitting the training loop in 8 GB, what the English replay share and the learning rate do, the main run, and what the curve says about continuing.</td></tr>
+                        <tr><td>Teaching it to answer</td><td>A short supervised warm-up in chat format, what it costs the text model, and the hundred examples that decided whether RL had anything to learn.</td></tr>
+                        <tr><td>Rewards a script can check</td><td>GRPO written out in full, two verifiable rewards, the hack the optimiser found in one of them, the repair, and what RL can and cannot see.</td></tr>
+                        <tr><td>Where it lands</td><td>The 135M against stock models up to 1.7B on the task, the same prompts at every checkpoint, and what it all cost.</td></tr>
+                    </tbody>
+                </table>
+            </div>

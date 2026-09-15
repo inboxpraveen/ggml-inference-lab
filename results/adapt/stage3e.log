@@ -1,0 +1,92 @@
+== grpo, v2 reward, temperature 0.7 Tue Sep 15 17:16:49 IST 2026
+  eval step 0: sentiment acc 0.930 format 1.000 | language reward 0.585 v2 0.417 devanagari 0.931 words 63  (0.6 min)
+step 1/150 reward 0.854 sent 1.0 fmt 1.0 open 0.7071960784810856 len 36 kl 0.0006 gn 1.98 0.7 min
+step 11/150 reward 0.926 sent 0.9333333333333332 fmt 1.0 open 0.9025415470799516 len 17 kl 0.0008 gn 3.75 1.6 min
+step 21/150 reward 0.748 sent 0.9 fmt 1.0 open 0.6979046514661147 len 61 kl 0.0011 gn 1.70 3.5 min
+step 31/150 reward 0.819 sent 1.0 fmt 1.0 open 0.7591967075960419 len 71 kl 0.0017 gn 1.47 5.7 min
+step 41/150 reward 0.910 sent 0.9666666666666667 fmt 1.0 open 0.7393132972634946 len 10 kl 0.0011 gn 2.95 7.5 min
+  eval step 50: sentiment acc 0.930 format 0.995 | language reward 0.580 v2 0.384 devanagari 0.937 words 68  (9.3 min)
+step 51/150 reward 0.963 sent 1.0 fmt 1.0 open 0.9258193719807634 len 22 kl 0.0034 gn 3.22 9.7 min
+step 61/150 reward 0.979 sent 1.0 fmt 1.0 open 0.9157795349401138 len 24 kl 0.0036 gn 1.82 11.0 min
+step 71/150 reward 0.797 sent 0.8666666666666667 fmt 1.0 open 0.586783198926336 len 16 kl 0.0056 gn 3.15 12.8 min
+step 81/150 reward 0.955 sent 1.0 fmt 1.0 open 0.8196560733023368 len 18 kl 0.0080 gn 1.58 13.7 min
+step 91/150 reward 0.707 sent 0.5 fmt 1.0 open 0.9134385543386416 len 28 kl 0.0149 gn 3.06 14.7 min
+  eval step 100: sentiment acc 0.930 format 0.995 | language reward 0.632 v2 0.410 devanagari 0.948 words 65  (16.1 min)
+step 101/150 reward 0.825 sent 0.825 fmt 1.0 open None len 7 kl 0.0021 gn 5.65 16.1 min
+step 111/150 reward 1.000 sent 1.0 fmt 1.0 open None len 7 kl 0.0006 gn 0.00 17.8 min
+step 121/150 reward 0.782 sent 0.7333333333333334 fmt 1.0 open 0.9289710449279983 len 10 kl 0.0161 gn 2.26 19.0 min
+step 131/150 reward 0.800 sent 0.8 fmt 1.0 open None len 7 kl 0.0012 gn 0.00 20.7 min
+step 141/150 reward 0.875 sent 0.875 fmt 1.0 open None len 7 kl 0.0005 gn 8.76 21.8 min
+  eval step 150: sentiment acc 0.945 format 0.995 | language reward 0.728 v2 0.505 devanagari 0.957 words 52  (23.8 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.40it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.40it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\grpo-v2-t07
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2-t07                     144M  sentiment acc 0.945 format 0.998 (acc|fmt 0.946)  language reward 0.721 devanagari 0.961 words 54 v2 0.490 looping 0.46 | sampled: reward 0.949 v2 0.933 looping 0.02  76s
+== sft with 20 cold-start examples Tue Sep 15 17:42:07 IST 2026
+12019 train, 500 test examples after length filter
+step 0: test loss 3.558 hi bpc 1.247 en bpc 1.090
+step 1/1502 loss 3.894 ema 3.894 lr 3.3e-06 0.2 min
+step 51/1502 loss 3.452 ema 3.417 lr 1.0e-04 0.5 min
+step 101/1502 loss 2.719 ema 3.188 lr 9.9e-05 0.8 min
+step 151/1502 loss 3.342 ema 3.155 lr 9.9e-05 1.1 min
+step 201/1502 loss 3.306 ema 3.178 lr 9.7e-05 1.4 min
+step 251/1502 loss 2.868 ema 3.081 lr 9.5e-05 1.8 min
+step 301/1502 loss 3.250 ema 3.072 lr 9.3e-05 2.1 min
+step 351/1502 loss 2.952 ema 3.090 lr 9.0e-05 2.4 min
+  eval step 375: test loss 3.015 hi bpc 1.378 en bpc 1.160
+step 401/1502 loss 3.356 ema 3.099 lr 8.7e-05 2.8 min
+step 451/1502 loss 2.952 ema 3.020 lr 8.3e-05 3.1 min
+step 501/1502 loss 2.543 ema 2.990 lr 7.9e-05 3.4 min
+step 551/1502 loss 3.014 ema 3.005 lr 7.5e-05 3.7 min
+step 601/1502 loss 3.119 ema 2.983 lr 7.1e-05 4.1 min
+step 651/1502 loss 2.970 ema 3.014 lr 6.6e-05 4.4 min
+step 701/1502 loss 3.168 ema 2.993 lr 6.1e-05 4.7 min
+  eval step 750: test loss 2.946 hi bpc 1.438 en bpc 1.209
+step 751/1502 loss 3.110 ema 3.027 lr 5.7e-05 5.2 min
+step 801/1502 loss 2.759 ema 2.698 lr 5.2e-05 5.5 min
+step 851/1502 loss 2.772 ema 2.680 lr 4.7e-05 5.8 min
+step 901/1502 loss 2.748 ema 2.740 lr 4.2e-05 6.1 min
+step 951/1502 loss 3.132 ema 2.760 lr 3.8e-05 6.4 min
+step 1001/1502 loss 2.564 ema 2.727 lr 3.3e-05 6.7 min
+step 1051/1502 loss 2.493 ema 2.766 lr 2.9e-05 7.0 min
+step 1101/1502 loss 2.861 ema 2.743 lr 2.6e-05 7.3 min
+  eval step 1125: test loss 2.934 hi bpc 1.468 en bpc 1.245
+step 1151/1502 loss 2.657 ema 2.726 lr 2.2e-05 7.8 min
+step 1201/1502 loss 2.715 ema 2.700 lr 1.9e-05 8.1 min
+step 1251/1502 loss 2.584 ema 2.687 lr 1.6e-05 8.4 min
+step 1301/1502 loss 3.107 ema 2.761 lr 1.4e-05 8.7 min
+step 1351/1502 loss 2.678 ema 2.651 lr 1.2e-05 9.0 min
+step 1401/1502 loss 2.722 ema 2.684 lr 1.1e-05 9.3 min
+step 1451/1502 loss 3.004 ema 2.741 lr 1.0e-05 9.6 min
+  eval step 1500: test loss 2.922 hi bpc 1.477 en bpc 1.258
+step 1501/1502 loss 2.974 ema 2.715 lr 1.0e-05 10.2 min
+  eval step 1502: test loss 2.922 hi bpc 1.477 en bpc 1.258
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.49it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.49it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\sft-cold20
+  return self._apply(lambda t: t.cuda(device))
+sft-cold20                      144M  sentiment acc 0.605 format 1.000 (acc|fmt 0.605)  language reward 0.559 devanagari 0.929 words 67 v2 0.388 looping 0.54 | sampled: reward 0.880 v2 0.816 looping 0.17  70s
+== grpo from it Tue Sep 15 17:53:52 IST 2026
+  eval step 0: sentiment acc 0.605 format 1.000 | language reward 0.543 v2 0.388 devanagari 0.936 words 71  (0.7 min)
+step 1/150 reward 0.717 sent 0.5 fmt 1.0 open 0.934470487310829 len 34 kl 0.0009 gn 2.01 0.7 min
+step 11/150 reward 0.771 sent 0.7000000000000001 fmt 1.0 open 0.9822542091838159 len 22 kl 0.0019 gn 2.86 2.1 min
+step 21/150 reward 0.843 sent 0.5 fmt 1.0 open 0.9566900686751407 len 68 kl 0.0033 gn 1.83 4.2 min
+step 31/150 reward 0.782 sent 0.3875 fmt 1.0 open 0.913041193651837 len 63 kl 0.0060 gn 1.95 6.5 min
+step 41/150 reward 0.933 sent 0.9666666666666667 fmt 1.0 open 0.8326232543998107 len 13 kl 0.0205 gn 3.76 8.8 min
+  eval step 50: sentiment acc 0.925 format 1.000 | language reward 0.539 v2 0.354 devanagari 0.946 words 75  (11.0 min)
+step 51/150 reward 0.891 sent 0.825 fmt 0.875 open 0.9568946664923219 len 24 kl 0.0183 gn 2.84 11.4 min
+step 61/150 reward 0.961 sent 0.9583333333333334 fmt 0.9583333333333334 open 0.9703995431358335 len 27 kl 0.0086 gn 2.60 13.3 min
+step 71/150 reward 0.945 sent 0.9666666666666667 fmt 1.0 open 0.8783891777723941 len 18 kl 0.0607 gn 2.74 15.1 min
+step 81/150 reward 0.921 sent 0.9 fmt 1.0 open 0.9835295785861016 len 24 kl 0.0527 gn 2.89 16.4 min
+step 91/150 reward 0.724 sent 0.5 fmt 1.0 open 0.9474315567389424 len 32 kl 0.0281 gn 2.46 17.9 min
+  eval step 100: sentiment acc 0.915 format 1.000 | language reward 0.580 v2 0.403 devanagari 0.959 words 74  (19.5 min)
+step 101/150 reward 0.800 sent 0.8 fmt 1.0 open None len 7 kl 0.0446 gn 0.00 19.5 min
+step 111/150 reward 0.969 sent 0.96875 fmt 0.96875 open None len 7 kl 0.0631 gn 2.21 21.6 min
+step 121/150 reward 0.792 sent 0.7333333333333334 fmt 1.0 open 0.968455679016306 len 13 kl 0.0553 gn 3.91 23.2 min
+step 131/150 reward 0.800 sent 0.8 fmt 1.0 open None len 7 kl 0.0658 gn 0.00 24.9 min
+step 141/150 reward 0.875 sent 0.875 fmt 1.0 open None len 7 kl 0.0443 gn 15.97 26.7 min
+  eval step 150: sentiment acc 0.910 format 1.000 | language reward 0.524 v2 0.323 devanagari 0.976 words 87  (28.8 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.63it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.56it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\grpo-cold20
+  return self._apply(lambda t: t.cuda(device))
+grpo-cold20                     144M  sentiment acc 0.915 format 1.000 (acc|fmt 0.915)  language reward 0.522 devanagari 0.973 words 87 v2 0.340 looping 0.63 | sampled: reward 0.921 v2 0.867 looping 0.17  75s
+== STAGE3E-DONE Tue Sep 15 18:24:07 IST 2026

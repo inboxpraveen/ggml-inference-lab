@@ -1,0 +1,70 @@
+            <h2>Step 3, continued pretraining, first half: fitting the training loop in 8 GB</h2>
+            <p>
+                The training loop is a hundred lines of plain PyTorch: pack the tokenized text into
+                1,024-token windows, draw each window from Hindi or English by a coin weighted at the replay
+                ratio, run the model, cross-entropy, AdamW, linear warmup then cosine decay, clip the gradient
+                at one. No Trainer class, no accelerate, because I wanted to see where every byte went, and it
+                turned out to matter. The first version, the textbook one with fp32 weights and bf16 autocast,
+                ran at {{TOKS_FP32_MICRO2}} tokens a second with two sequences per micro-batch and fell over
+                with four. Two sequences of 1,024 tokens through a 135M-parameter model should not need
+                {{MEM_FP32_MICRO2}} GB.
+            </p>
+            <p>
+                A hook on one decoder layer said where the memory was: {{ACT_PER_LAYER_MB}} MB of saved
+                activations per layer for 2,048 tokens, {{ACT_ATTN_MB}} of them in the attention block. That
+                is the size of the full attention matrix, nine heads by 1,024 by 1,024 in bf16 for two
+                sequences, which a fused attention kernel is supposed never to materialise. The model uses
+                grouped-query attention (nine query heads, three key-value heads), transformers passes
+                <code>enable_gqa=True</code> to PyTorch's scaled-dot-product attention when there's no padding
+                mask, and on this card with this PyTorch that combination dispatches to the maths fallback,
+                which writes the attention matrix out for the backward pass. Repeating the key and value
+                heads to nine before the call, a few megabytes, lets the memory-efficient kernel run instead.
+                One five-line patch, and the activations for 2,048 tokens went from {{ACT_BEFORE_MB}} MB to
+                {{ACT_AFTER_MB}} MB, throughput from {{TOKS_FP32_MICRO2}} to {{TOKS_FIXED_MICRO2}} tokens a
+                second at the same micro-batch. This is the second time in this series that the fix was a
+                dispatch decision rather than arithmetic, and I've stopped being surprised.
+            </p>
+            <p>
+                The rest of the headroom came from two standard moves. First, the model itself runs in bf16
+                and the optimizer keeps its own fp32 copy of the weights, updating that and writing it back
+                after each step; that halves every saved activation without the precision loss of updating
+                bf16 weights directly with a learning rate of a few ten-thousandths. Second, the output layer
+                is the one place where a small model is briefly big: 65,152 logits per position, in fp32 for
+                the loss, is a gigabyte per 4,096 tokens before the gradient. Computing the cross-entropy 512
+                positions at a time inside a checkpoint, so the logits are rebuilt in the backward pass rather
+                than stored, removes that. With those, four sequences per micro-batch fit in
+                {{MEM_BF16_MICRO4}} GB and the loop runs at {{TOKS_BF16_MICRO4}} tokens a second (the main run
+                later sustained {{RUN_MAIN_TOKS}} thousand between evaluations), which is the number every
+                training minute in this post is built on. Gradient checkpointing of the
+                whole model, the usual advice, was the wrong tool here: it fit the same batch in less memory
+                but at {{TOKS_GC_MICRO4}} tokens a second, because the recompute is a full extra forward pass
+                on a model that's launch-bound to begin with.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Configuration (1,024-token sequences)</th>
+                            <th>Micro-batch</th>
+                            <th>Peak memory</th>
+                            <th>Tokens per second</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>fp32 weights, bf16 autocast, stock attention dispatch</td><td>2</td><td>{{MEM_FP32_MICRO2}} GB</td><td>{{TOKS_FP32_MICRO2}}</td></tr>
+                        <tr><td>same, with gradient checkpointing</td><td>4</td><td>5.9 GB</td><td>{{TOKS_GC_MICRO4}}</td></tr>
+                        <tr><td>fp32 weights, bf16 autocast, K/V repeated before attention</td><td>2</td><td>6.0 GB</td><td>{{TOKS_FIXED_MICRO2}}</td></tr>
+                        <tr><td>bf16 weights with fp32 master copy, chunked loss, K/V repeated</td><td>2</td><td>4.2 GB</td><td>7,262</td></tr>
+                        <tr><td>same</td><td>4</td><td>{{MEM_BF16_MICRO4}} GB</td><td>{{TOKS_BF16_MICRO4}}</td></tr>
+                        <tr><td>same</td><td>6</td><td>7.5 GB</td><td>11,875</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Four sequences of 1,024, accumulated over four micro-batches, is 16,384 tokens per optimizer
+                step, and that's the step every run below counts in. At {{TOKS_BF16_MICRO4}} tokens a second,
+                a hundred steps is two and a quarter minutes and a hundred million tokens is a bit over two
+                hours; I'll come back to what that buys.
+            </p>

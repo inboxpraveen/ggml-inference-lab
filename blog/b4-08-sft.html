@@ -1,0 +1,65 @@
+            <h2>Step 4, supervised fine-tuning: teaching it to answer</h2>
+            <p>
+                After continued pretraining the model is a Hindi text predictor. Ask it a question and it
+                continues the question, or writes the next paragraph of a web page that might have contained
+                it. The supervised stage turns that into a model that stops, answers and stops again, and it
+                needs three things: a format, data in the format, and a loss that only counts the answer.
+            </p>
+            <p>
+                The format is ChatML, because SmolLM2's tokenizer already carries the
+                <code>&lt;|im_start|&gt;</code> and <code>&lt;|im_end|&gt;</code> tokens for it. A training
+                example is the prompt wrapped as a user turn, then the answer as an assistant turn ending in
+                <code>&lt;|im_end|&gt;</code>, and the loss is masked to the assistant tokens so the model
+                learns to produce answers, not to predict questions. The data is {{SFT_N_TRAIN}} pairs from a
+                GPT-4-written Alpaca set translated to Hindi, kept only where both sides are at least 70%
+                Devanagari and the answer is under 1,200 characters, with {{N_SFT_TEST}} held out. Two epochs
+                at a peak learning rate of {{SFT_LR}} with the same warmup-and-cosine shape as before,
+                {{SFT_STEPS}} steps, {{SFT_MIN}} minutes.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/sft.svg" alt="Left: training loss smoothed and held-out loss over the supervised fine-tuning steps. Right: held-out Hindi and English bits per character at each evaluation, for the run with and without the cold-start examples." loading="lazy" decoding="async">
+                <figcaption>Left: cross-entropy per answer token on the training batches (smoothed) and on the {{N_SFT_TEST}} held-out pairs. Right: the text scores from the previous section, re-measured at each half epoch.</figcaption>
+            </figure>
+
+            <p>
+                The held-out loss goes from {{SFT_LOSS0}} nats per answer token before fine-tuning to
+                {{SFT_LOSS}} after, most of it in the first half epoch. The right panel is the part I'd
+                have skipped if I hadn't measured it: the Hindi text score drifts from {{SFT_HI_BPC0}} to
+                {{SFT_HI_BPC}} bits per character, a {{SFT_HI_DRIFT_PCT}}% loss, and English from
+                {{SFT_EN_BPC0}} to {{SFT_EN_BPC}}. That is not the small price the folklore promises. The
+                instruction data is machine-translated GPT-4 answers, a narrow register a long way from web
+                text, and {{SFT_STEPS}} steps at 1e-4 on a 135M model pull the whole model toward it, not
+                just the answer style. The task numbers in the last section are what the stage is for, but
+                if you wanted the text model back you would mix pretraining text
+                into the SFT batches the way the replay did in step 3, or run a shorter stage at a lower
+                rate. I left it as measured, because the next stage doesn't need the text score and the
+                post is long enough. More useful than the loss are the answers. Before
+                the stage, "what is the capital of India" gets a web-page fragment that loops ("in 1991 India
+                with China in 1991 India with…"), because a base model given a question continues the page it
+                thinks the question came from. After it, one sentence, then the end-of-turn token.
+            </p>
+            <p>
+                One more thing happened here that decided the shape of the next stage. The reinforcement
+                learning step needs the model to sometimes produce a right answer, because the group
+                advantage is computed from the spread of scores within a group, and a group of eight zeros
+                has no spread. So I checked, before running it, how often the fine-tuned model answered the
+                sentiment prompt with valid JSON at all. On 200 held-out reviews: {{TASK_SFT_PLAIN_FMT_PCT}}%.
+                Not low; zero. The instruction data has no JSON in it and no sentiment labels, and a 135M
+                model does not generalise from "answer in Hindi" to "answer in this schema" on its own. This
+                is the R1 paper's cold-start problem in miniature, and I took its fix: {{SFT_COLD_START}}
+                labelled reviews from the training split, written as the exact JSON the reward expects,
+                mixed into the {{SFT_N_TRAIN}} instruction pairs, and the stage re-run with nothing else
+                changed. The held-out answer loss is within a thousandth
+                ({{SFT_PLAIN_LOSS}} against {{SFT_LOSS}}), the drift is the same, and the JSON rate on the
+                held-out reviews went to {{TASK_SFT_FMT_PCT}}%, with {{TASK_SFT_ACC_PCT}}% of the labels
+                right. A hundred examples the model had seen twice each. That's the number to remember
+                when a paper says the supervised stage before RL is "small": it is small in count and
+                large in what it decides, because it's the difference between a reward signal and none.
+                The chart above is the cold-start run; the dashed lines on the right are the first one.
+            </p>
+            <p>
+                The other sentence I owe the reader: the train loss on the left steps down at the epoch
+                boundary and the held-out loss doesn't follow, which is the model starting to remember
+                answers it has seen once. Two epochs is where I stopped for that reason.
+            </p>

@@ -1,0 +1,146 @@
+== main Tue Sep 15 12:00:32 IST 2026
+hindi 103.7M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/3000 loss 9.091 ema 9.091 lr 5.00e-06 gn 14.73 1672 tok/s  0.2 min  mem 4.9 GB
+step 51/3000 loss 6.069 ema 7.671 lr 2.55e-04 gn 1.35 11519 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.807  en bpb 0.899  (1.6M tokens, 2.4 min)
+step 101/3000 loss 5.062 ema 6.301 lr 5.00e-04 gn 1.25 11492 tok/s  2.4 min  mem 6.1 GB
+step 151/3000 loss 4.629 ema 5.500 lr 5.00e-04 gn 1.35 11993 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.703  en bpb 0.943  (3.3M tokens, 4.6 min)
+step 201/3000 loss 4.366 ema 5.002 lr 4.99e-04 gn 1.02 11855 tok/s  4.6 min  mem 6.1 GB
+step 251/3000 loss 4.574 ema 4.727 lr 4.97e-04 gn 1.08 12100 tok/s  5.7 min  mem 6.1 GB
+  eval step 300: hi bpb 0.655  en bpb 0.964  (4.9M tokens, 6.8 min)
+step 301/3000 loss 4.683 ema 4.550 lr 4.95e-04 gn 1.09 12018 tok/s  6.8 min  mem 6.1 GB
+step 351/3000 loss 4.425 ema 4.417 lr 4.92e-04 gn 1.14 12173 tok/s  7.9 min  mem 6.1 GB
+  eval step 400: hi bpb 0.627  en bpb 0.979  (6.6M tokens, 9.0 min)
+step 401/3000 loss 4.256 ema 4.335 lr 4.88e-04 gn 1.04 12097 tok/s  9.1 min  mem 6.1 GB
+step 451/3000 loss 4.177 ema 4.240 lr 4.84e-04 gn 0.81 12200 tok/s  10.1 min  mem 6.1 GB
+  eval step 500: hi bpb 0.603  en bpb 0.992  (8.2M tokens, 11.6 min)
+step 501/3000 loss 4.032 ema 4.197 lr 4.79e-04 gn 0.85 11777 tok/s  11.6 min  mem 6.1 GB
+step 551/3000 loss 3.971 ema 4.133 lr 4.74e-04 gn 0.85 11890 tok/s  12.7 min  mem 6.1 GB
+  eval step 600: hi bpb 0.589  en bpb 1.010  (9.8M tokens, 13.8 min)
+step 601/3000 loss 4.051 ema 4.085 lr 4.68e-04 gn 0.91 11849 tok/s  13.9 min  mem 6.1 GB
+step 651/3000 loss 4.002 ema 4.047 lr 4.61e-04 gn 0.76 11938 tok/s  14.9 min  mem 6.1 GB
+  eval step 700: hi bpb 0.576  en bpb 1.022  (11.5M tokens, 16.0 min)
+step 701/3000 loss 3.971 ema 4.004 lr 4.54e-04 gn 0.89 11912 tok/s  16.1 min  mem 6.1 GB
+step 751/3000 loss 3.930 ema 3.969 lr 4.46e-04 gn 0.86 11949 tok/s  17.2 min  mem 6.1 GB
+  eval step 800: hi bpb 0.566  en bpb 1.029  (13.1M tokens, 18.5 min)
+step 801/3000 loss 3.823 ema 3.949 lr 4.38e-04 gn 0.93 11779 tok/s  18.6 min  mem 6.1 GB
+step 851/3000 loss 3.856 ema 3.935 lr 4.30e-04 gn 0.73 11789 tok/s  19.7 min  mem 6.1 GB
+  eval step 900: hi bpb 0.558  en bpb 1.040  (14.7M tokens, 20.9 min)
+step 901/3000 loss 3.734 ema 3.897 lr 4.21e-04 gn 0.86 11765 tok/s  20.9 min  mem 6.1 GB
+step 951/3000 loss 3.805 ema 3.886 lr 4.11e-04 gn 0.87 11815 tok/s  22.0 min  mem 6.1 GB
+  eval step 1000: hi bpb 0.551  en bpb 1.055  (16.4M tokens, 23.5 min)
+step 1001/3000 loss 4.099 ema 3.869 lr 4.01e-04 gn 0.82 11609 tok/s  23.5 min  mem 6.1 GB
+step 1051/3000 loss 3.956 ema 3.838 lr 3.91e-04 gn 0.79 11674 tok/s  24.6 min  mem 6.1 GB
+  eval step 1100: hi bpb 0.545  en bpb 1.065  (18.0M tokens, 25.8 min)
+step 1101/3000 loss 3.914 ema 3.841 lr 3.80e-04 gn 0.77 11658 tok/s  25.8 min  mem 6.1 GB
+step 1151/3000 loss 3.889 ema 3.809 lr 3.69e-04 gn 0.72 11717 tok/s  26.8 min  mem 6.1 GB
+  eval step 1200: hi bpb 0.538  en bpb 1.070  (19.7M tokens, 28.0 min)
+step 1201/3000 loss 3.906 ema 3.792 lr 3.58e-04 gn 0.74 11708 tok/s  28.0 min  mem 6.1 GB
+step 1251/3000 loss 3.701 ema 3.754 lr 3.47e-04 gn 0.67 11759 tok/s  29.0 min  mem 6.1 GB
+  eval step 1300: hi bpb 0.532  en bpb 1.070  (21.3M tokens, 30.2 min)
+step 1301/3000 loss 3.762 ema 3.741 lr 3.35e-04 gn 0.75 11753 tok/s  30.2 min  mem 6.1 GB
+step 1351/3000 loss 3.938 ema 3.739 lr 3.23e-04 gn 0.88 11800 tok/s  31.3 min  mem 6.1 GB
+  eval step 1400: hi bpb 0.528  en bpb 1.072  (22.9M tokens, 32.4 min)
+step 1401/3000 loss 3.708 ema 3.713 lr 3.11e-04 gn 0.78 11782 tok/s  32.5 min  mem 6.1 GB
+step 1451/3000 loss 3.704 ema 3.716 lr 2.99e-04 gn 0.75 11825 tok/s  33.5 min  mem 6.1 GB
+  eval step 1500: hi bpb 0.524  en bpb 1.075  (24.6M tokens, 34.7 min)
+step 1501/3000 loss 3.785 ema 3.719 lr 2.87e-04 gn 0.70 11812 tok/s  34.7 min  mem 6.1 GB
+step 1551/3000 loss 3.483 ema 3.700 lr 2.75e-04 gn 0.69 11852 tok/s  35.7 min  mem 6.1 GB
+  eval step 1600: hi bpb 0.519  en bpb 1.080  (26.2M tokens, 36.9 min)
+step 1601/3000 loss 3.792 ema 3.692 lr 2.63e-04 gn 0.77 11845 tok/s  36.9 min  mem 6.1 GB
+step 1651/3000 loss 3.572 ema 3.690 lr 2.51e-04 gn 0.70 11882 tok/s  37.9 min  mem 6.1 GB
+  eval step 1700: hi bpb 0.516  en bpb 1.081  (27.9M tokens, 39.1 min)
+step 1701/3000 loss 3.624 ema 3.659 lr 2.39e-04 gn 0.69 11874 tok/s  39.1 min  mem 6.1 GB
+step 1751/3000 loss 3.867 ema 3.652 lr 2.27e-04 gn 0.73 11908 tok/s  40.2 min  mem 6.1 GB
+  eval step 1800: hi bpb 0.512  en bpb 1.082  (29.5M tokens, 41.3 min)
+step 1801/3000 loss 3.724 ema 3.629 lr 2.15e-04 gn 0.72 11899 tok/s  41.3 min  mem 6.1 GB
+step 1851/3000 loss 3.538 ema 3.643 lr 2.03e-04 gn 0.72 11930 tok/s  42.4 min  mem 6.1 GB
+  eval step 1900: hi bpb 0.509  en bpb 1.083  (31.1M tokens, 43.5 min)
+step 1901/3000 loss 3.442 ema 3.623 lr 1.92e-04 gn 0.73 11914 tok/s  43.6 min  mem 6.1 GB
+step 1951/3000 loss 3.505 ema 3.615 lr 1.81e-04 gn 0.69 11945 tok/s  44.6 min  mem 6.1 GB
+  eval step 2000: hi bpb 0.507  en bpb 1.085  (32.8M tokens, 45.8 min)
+step 2001/3000 loss 3.636 ema 3.610 lr 1.70e-04 gn 0.77 11931 tok/s  45.8 min  mem 6.1 GB
+step 2051/3000 loss 3.522 ema 3.593 lr 1.59e-04 gn 0.69 11960 tok/s  46.8 min  mem 6.1 GB
+  eval step 2100: hi bpb 0.505  en bpb 1.085  (34.4M tokens, 48.0 min)
+step 2101/3000 loss 3.619 ema 3.602 lr 1.49e-04 gn 0.71 11952 tok/s  48.0 min  mem 6.1 GB
+step 2151/3000 loss 3.601 ema 3.577 lr 1.39e-04 gn 0.71 11979 tok/s  49.0 min  mem 6.1 GB
+  eval step 2200: hi bpb 0.502  en bpb 1.085  (36.0M tokens, 50.2 min)
+step 2201/3000 loss 3.506 ema 3.549 lr 1.29e-04 gn 0.64 11968 tok/s  50.2 min  mem 6.1 GB
+step 2251/3000 loss 3.458 ema 3.547 lr 1.20e-04 gn 0.67 11990 tok/s  51.3 min  mem 6.1 GB
+  eval step 2300: hi bpb 0.501  en bpb 1.083  (37.7M tokens, 52.4 min)
+step 2301/3000 loss 3.563 ema 3.575 lr 1.12e-04 gn 0.74 11979 tok/s  52.5 min  mem 6.1 GB
+step 2351/3000 loss 3.397 ema 3.569 lr 1.04e-04 gn 0.66 12003 tok/s  53.5 min  mem 6.1 GB
+  eval step 2400: hi bpb 0.499  en bpb 1.083  (39.3M tokens, 54.7 min)
+step 2401/3000 loss 3.522 ema 3.550 lr 9.59e-05 gn 0.67 11992 tok/s  54.7 min  mem 6.1 GB
+step 2451/3000 loss 3.370 ema 3.546 lr 8.88e-05 gn 0.64 12015 tok/s  55.7 min  mem 6.1 GB
+  eval step 2500: hi bpb 0.498  en bpb 1.084  (41.0M tokens, 56.9 min)
+step 2501/3000 loss 3.564 ema 3.539 lr 8.22e-05 gn 0.73 12000 tok/s  56.9 min  mem 6.1 GB
+step 2551/3000 loss 3.642 ema 3.534 lr 7.62e-05 gn 0.74 12022 tok/s  57.9 min  mem 6.1 GB
+  eval step 2600: hi bpb 0.496  en bpb 1.083  (42.6M tokens, 59.1 min)
+step 2601/3000 loss 3.444 ema 3.542 lr 7.08e-05 gn 0.62 12015 tok/s  59.1 min  mem 6.1 GB
+step 2651/3000 loss 3.654 ema 3.544 lr 6.60e-05 gn 0.67 12036 tok/s  60.1 min  mem 6.1 GB
+  eval step 2700: hi bpb 0.495  en bpb 1.083  (44.2M tokens, 61.3 min)
+step 2701/3000 loss 3.512 ema 3.531 lr 6.18e-05 gn 0.66 12027 tok/s  61.3 min  mem 6.1 GB
+step 2751/3000 loss 3.641 ema 3.534 lr 5.82e-05 gn 0.65 12047 tok/s  62.4 min  mem 6.1 GB
+  eval step 2800: hi bpb 0.495  en bpb 1.083  (45.9M tokens, 63.5 min)
+step 2801/3000 loss 3.673 ema 3.540 lr 5.53e-05 gn 0.66 12034 tok/s  63.6 min  mem 6.1 GB
+step 2851/3000 loss 3.534 ema 3.531 lr 5.30e-05 gn 0.65 12053 tok/s  64.6 min  mem 6.1 GB
+  eval step 2900: hi bpb 0.494  en bpb 1.084  (47.5M tokens, 65.8 min)
+step 2901/3000 loss 3.533 ema 3.526 lr 5.13e-05 gn 0.66 12041 tok/s  65.8 min  mem 6.1 GB
+step 2951/3000 loss 3.609 ema 3.515 lr 5.03e-05 gn 0.67 12059 tok/s  66.8 min  mem 6.1 GB
+  eval step 3000: hi bpb 0.493  en bpb 1.083  (49.2M tokens, 68.0 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  3.53it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  3.53it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\main
+== bpb of the checkpoints Tue Sep 15 13:08:42 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+cpt-main                         144M  hi bpb 0.500 (bpc 1.260, 131368 tok)  en bpb 1.088 (bpc 1.094)  28s
+  return self._apply(lambda t: t.cuda(device))
+run1200                          144M  hi bpb 0.559 (bpc 1.409, 131368 tok)  en bpb 0.987 (bpc 0.993)  27s
+== sft Tue Sep 15 13:09:49 IST 2026
+11999 train, 500 test examples after length filter
+step 0: test loss 3.558 hi bpc 1.247 en bpc 1.090
+step 1/1498 loss 3.894 ema 3.894 lr 3.3e-06 0.2 min
+step 51/1498 loss 3.564 ema 3.412 lr 1.0e-04 0.5 min
+step 101/1498 loss 2.685 ema 3.168 lr 9.9e-05 0.8 min
+step 151/1498 loss 3.354 ema 3.157 lr 9.9e-05 1.1 min
+step 201/1498 loss 3.304 ema 3.136 lr 9.7e-05 1.4 min
+step 251/1498 loss 2.791 ema 3.052 lr 9.5e-05 1.8 min
+step 301/1498 loss 2.934 ema 3.085 lr 9.3e-05 2.1 min
+step 351/1498 loss 2.468 ema 3.083 lr 9.0e-05 2.4 min
+  eval step 374: test loss 3.018 hi bpc 1.378 en bpc 1.161
+step 401/1498 loss 2.955 ema 3.081 lr 8.7e-05 2.8 min
+step 451/1498 loss 2.989 ema 3.035 lr 8.3e-05 3.2 min
+step 501/1498 loss 3.332 ema 3.014 lr 7.9e-05 3.4 min
+step 551/1498 loss 3.097 ema 3.056 lr 7.5e-05 3.7 min
+step 601/1498 loss 2.803 ema 2.974 lr 7.0e-05 4.1 min
+step 651/1498 loss 2.965 ema 3.009 lr 6.6e-05 4.4 min
+step 701/1498 loss 3.104 ema 2.894 lr 6.1e-05 4.7 min
+  eval step 748: test loss 2.946 hi bpc 1.435 en bpc 1.211
+step 751/1498 loss 2.678 ema 2.966 lr 5.6e-05 5.4 min
+step 801/1498 loss 2.573 ema 2.687 lr 5.2e-05 5.9 min
+step 851/1498 loss 2.739 ema 2.688 lr 4.7e-05 6.3 min
+step 901/1498 loss 2.805 ema 2.744 lr 4.2e-05 6.8 min
+step 951/1498 loss 2.472 ema 2.739 lr 3.8e-05 7.3 min
+step 1001/1498 loss 2.669 ema 2.756 lr 3.3e-05 7.6 min
+step 1051/1498 loss 2.688 ema 2.751 lr 2.9e-05 8.1 min
+step 1101/1498 loss 2.913 ema 2.720 lr 2.5e-05 8.4 min
+  eval step 1122: test loss 2.933 hi bpc 1.467 en bpc 1.244
+step 1151/1498 loss 2.543 ema 2.730 lr 2.2e-05 8.9 min
+step 1201/1498 loss 2.652 ema 2.725 lr 1.9e-05 9.2 min
+step 1251/1498 loss 2.438 ema 2.693 lr 1.6e-05 9.5 min
+step 1301/1498 loss 2.656 ema 2.734 lr 1.4e-05 9.8 min
+step 1351/1498 loss 2.833 ema 2.685 lr 1.2e-05 10.2 min
+step 1401/1498 loss 2.772 ema 2.666 lr 1.1e-05 10.6 min
+step 1451/1498 loss 3.074 ema 2.729 lr 1.0e-05 10.9 min
+  eval step 1496: test loss 2.921 hi bpc 1.476 en bpc 1.259
+  eval step 1498: test loss 2.921 hi bpc 1.476 en bpc 1.259
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.43it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.43it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\sft
+== task eval of sft Tue Sep 15 13:21:36 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+sft                             144M  sentiment acc 0.000 format 0.000 (acc|fmt 0.000)  language reward 0.588 devanagari 0.931 words 65  57s
+== STAGE2-DONE Tue Sep 15 13:22:38 IST 2026

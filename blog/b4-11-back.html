@@ -1,0 +1,126 @@
+            <h2>What I couldn't verify, and what I'd do next</h2>
+            <ul>
+                <li><strong>The scaling line is three points.</strong> The "if we keep going" chart fits a power law through three complete runs at different budgets. Three points fit anything. It says what the next few hundred million tokens would probably do, not what a billion would.</li>
+                <li><strong>One seed each.</strong> The ablations are single runs of 400 steps. Differences of a few thousandths of a bit per character between them are within what a different data order would produce; I've only drawn conclusions from gaps larger than that, and said so where they aren't.</li>
+                <li><strong>The held-out sets are small.</strong> {{N_SENT_TEST}} reviews put about one percentage point of standard error on an accuracy near 0.93, so the three blue rows in the last table are tied and the point to Qwen3-1.7B is barely outside noise. The 100 open prompts for the language reward are fewer still. The ranking of model families in the last chart is robust to that; the second decimal place isn't.</li>
+                <li><strong>The instruction data is machine translated</strong>, and I didn't filter it by back-translation the way Airavata did. Some of the Hindi in it is stiff. The model learned the stiffness too.</li>
+                <li><strong>Sarvam's numbers are from the model card and press coverage.</strong> Both Sarvam blog posts returned an error when fetched, so the OpenHathi vocabulary size and the Sarvam-1 training details are secondary-sourced and marked as such in the sources file.</li>
+                <li><strong>I measured bits per character, not benchmarks.</strong> There are Hindi benchmark suites (IndicXTREME and its successors), and a proper evaluation of the adapted model would run them. This post's claim is narrower: the language model got better on two held-out sets by a measured amount, and the post-trained model does one verifiable task better than most larger stock models.</li>
+                <li><strong>The looping is half solved.</strong> Nearly half of the shipped model's greedy answers to open prompts still repeat themselves. Sampling the RL batches at 0.7 was the change that moved it; the candidates I'd try next are lower still, penalising repeated n-grams at the token level rather than per answer, and mixing pretraining text back into the SFT stage so the model has less reason to fall into the instruction data's register.</li>
+                <li><strong>The English drift is larger than I'd accept in a product.</strong> {{MAIN_EN_DRIFT_PCT}}% on the model's own pretraining distribution after continued pretraining, and more after SFT. The replay ablation says thirty percent English would have held most of it; I kept ten so the three scaling runs shared one recipe.</li>
+                <li><strong>The next post</strong> is the stage this one ends before: taking the post-trained model to one specific job with a small task-specific dataset, which is where most people's actual problem lives, and where LoRA, data quality and evaluation design matter more than anything here.</li>
+            </ul>
+
+            <h2>Closing note</h2>
+            <p>
+                Start from where the model started. Asked a question in Hindi, the stock SmolLM2-135M
+                produced one word repeated until it ran out of room, because its tokenizer could not form a
+                Hindi word and its weights had never seen one. It scored {{BPC_STOCK_HI}} bits per character
+                on Hindi text, and its instruct sibling got {{TASK_INSTRUCT_ACC}} of a Hindi classification task
+                right in the format asked for. After the pipeline in this post, on data it
+                never trained on, the same 135M scores {{BPC_MAIN_HI}} on the crawl and {{WIKI_MAIN_HI}} on
+                Wikipedia, under every general-purpose stock model up to 1.7B; answers the question in one
+                correct sentence and stops; and scores {{TASK_GRPOV2T07_ACC}} on the classification task,
+                level with Qwen3-1.7B, twelve times its size. The stages that did it were the tokenizer
+                extension, {{RUN_MAIN_MIN}} minutes of continued pretraining on {{RUN_MAIN_HI_TOKENS_M}}M
+                Hindi tokens, a supervised warm-up on {{SFT_N_TRAIN}} instruction pairs plus a hundred labelled
+                examples, and reinforcement
+                learning against two rewards a script checks. It learned a language it never knew, on one
+                8 GB GPU, in a working day, and the curve it learned it along had not flattened when I
+                stopped.
+            </p>
+            <p>
+                The reason that matters beyond Hindi and beyond 135M is that nothing in the recipe is
+                specific to the laptop. Every stage is the stage the labs describe in their papers, in the
+                order they run it, and the scripts here are the loops those papers abbreviate. Scaling it is
+                a change of quantities, not of method: more tokens of the language, more GPUs running the
+                same training loop in data parallel, a larger starting model, a longer schedule, and the
+                same evaluation discipline at every checkpoint. The things this post found the hard way
+                (the tokenizer details that decide whether the GPU's time counts, the replay share, the cold
+                start that makes a reward reachable, the reward the optimiser will read more carefully than
+                you did) are the same things at any scale, because they are properties of the method, not
+                of the machine. The one stage a lab has that this recipe doesn't is people labelling
+                preferences, and the verifiable-reward branch of the field exists precisely to do without it.
+            </p>
+            <p>
+                The first three posts were about a machine and the bytes it can move. This one was about the
+                other thing the machine can do with its afternoon, and the honest summary is that the whole
+                published pipeline, minus the part that needs a thousand people to compare answers, ran on a
+                laptop in a working day, and the stages that were supposed to move a number moved it by an
+                amount I could measure, with the last stage the exception that taught the most. The
+                tokenizer work was the surprise: not the part that needed the GPU, but the part that decided
+                whether the GPU's time did anything. The reinforcement learning was the other surprise, in
+                the opposite direction. Forty lines of arithmetic did exactly what they were told, three
+                times, and twice what they were told was wrong in a way I could only see by decoding the
+                model afterwards: a hundred labelled examples had already done the job the reward was
+                written for, and the reward I wrote for the open-ended half paid for length and script and
+                was cashed in with repetition. The third run fixed the sampling rather than the reward, and
+                that was the one that moved the greedy answers. What a large lab has that I don't is the data, the annotators, and ten
+                thousand GPUs for the pretraining. What they don't have that I do is the ability to read
+                every line of the loop and every answer the model gave, and this post is my argument that
+                the second thing is worth more than it looks, mostly because of how often it told me the
+                training curve was lying.
+            </p>
+
+            <div style="margin-top: 3rem; padding: 2rem; background: var(--secondary-bg); border-radius: 15px; border: 1px solid var(--border-color);">
+                <h3 style="margin-top: 0;">Resources &amp; Links</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; margin-bottom: 2rem;">
+                    <a href="https://github.com/inboxpraveen/ggml-inference-lab" class="demo-button" style="margin: 0;" target="_blank" rel="noopener noreferrer">Scripts, results and the sources file</a>
+                    <a href="./blog-3.html" class="demo-button" style="margin: 0;">Where the bandwidth line ends</a>
+                    <a href="./blog-2.html" class="demo-button" style="margin: 0;">Before you tune anything</a>
+                    <a href="./blog-1.html" class="demo-button" style="margin: 0;">llama.cpp on one laptop</a>
+                </div>
+
+                <h4>The model, the data and the libraries:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M" target="_blank" rel="noopener noreferrer">SmolLM2-135M</a> and the
+                    <a href="{{SRC_SMOLLM2_URL}}" target="_blank" rel="noopener noreferrer">SmolLM2 paper</a> (Allal et al., 2025);
+                    <a href="https://huggingface.co/datasets/HuggingFaceFW/fineweb-2" target="_blank" rel="noopener noreferrer">FineWeb-2</a> (hin_Deva) and its
+                    <a href="{{SRC_FINEWEB2_URL}}" target="_blank" rel="noopener noreferrer">paper</a> (Penedo et al., 2025);
+                    <a href="https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu" target="_blank" rel="noopener noreferrer">FineWeb-Edu</a>;
+                    <a href="https://huggingface.co/datasets/wikimedia/wikipedia" target="_blank" rel="noopener noreferrer">Hindi Wikipedia</a> (wikimedia/wikipedia, 20231101.hi), the out-of-distribution held-out set;
+                    <a href="https://huggingface.co/datasets/FreedomIntelligence/alpaca-gpt4-hindi" target="_blank" rel="noopener noreferrer">alpaca-gpt4-hindi</a>;
+                    <a href="https://huggingface.co/datasets/ai4bharat/IndicSentiment" target="_blank" rel="noopener noreferrer">IndicSentiment</a> from
+                    <a href="{{SRC_INDICXTREME_URL}}" target="_blank" rel="noopener noreferrer">IndicXTREME</a> (Doddapaneni et al., 2023);
+                    <a href="https://huggingface.co/docs/tokenizers" target="_blank" rel="noopener noreferrer">tokenizers</a>,
+                    <a href="https://huggingface.co/docs/transformers" target="_blank" rel="noopener noreferrer">transformers</a> and PyTorch;
+                    <a href="{{SRC_TRL_GRPO_URL}}" target="_blank" rel="noopener noreferrer">TRL's GRPOTrainer documentation</a>, the production version of the loop written out here.
+                </p>
+
+                <h4>Language adaptation and continued pretraining:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="{{SRC_CHINESE_LLAMA_URL}}" target="_blank" rel="noopener noreferrer">Chinese-LLaMA and Alpaca</a> (Cui et al., 2023);
+                    <a href="{{SRC_SWALLOW_URL}}" target="_blank" rel="noopener noreferrer">Continual pre-training for cross-lingual adaptation: Japanese (Swallow)</a> (Fujii et al., 2024);
+                    <a href="{{SRC_IBRAHIM_CPT_URL}}" target="_blank" rel="noopener noreferrer">Simple and scalable strategies to continually pre-train LLMs</a> (Ibrahim et al., 2024);
+                    <a href="{{SRC_FOCUS_URL}}" target="_blank" rel="noopener noreferrer">FOCUS</a> (Dobler and de Melo, 2023) and
+                    <a href="{{SRC_WECHSEL_URL}}" target="_blank" rel="noopener noreferrer">WECHSEL</a> (Minixhofer et al., 2022) on embedding initialisation;
+                    <a href="{{SRC_OPENHATHI_URL}}" target="_blank" rel="noopener noreferrer">OpenHathi</a> (Sarvam, 2023) and
+                    <a href="{{SRC_SARVAM1_URL}}" target="_blank" rel="noopener noreferrer">Sarvam-1</a> (2024), with the caveat above;
+                    <a href="{{SRC_AIRAVATA_URL}}" target="_blank" rel="noopener noreferrer">Airavata</a> (Gala et al., 2024);
+                    <a href="{{SRC_AHIA_TOKENIZATION_COST_URL}}" target="_blank" rel="noopener noreferrer">Do all languages cost the same?</a> (Ahia et al., 2023) and
+                    <a href="{{SRC_PETROV_TOKENIZER_UNFAIRNESS_URL}}" target="_blank" rel="noopener noreferrer">Tokenizers introduce unfairness between languages</a> (Petrov et al., 2023).
+                </p>
+
+                <h4>Post-training at the labs:</h4>
+                <p style="margin-top: 0.5rem;">
+                    <a href="{{SRC_INSTRUCTGPT_URL}}" target="_blank" rel="noopener noreferrer">InstructGPT</a> (Ouyang et al., 2022);
+                    <a href="{{SRC_CONSTITUTIONAL_AI_URL}}" target="_blank" rel="noopener noreferrer">Constitutional AI</a> (Bai et al., 2022);
+                    <a href="{{SRC_LLAMA3_URL}}" target="_blank" rel="noopener noreferrer">The Llama 3 herd of models</a> (Meta, 2024);
+                    <a href="{{SRC_QWEN25_URL}}" target="_blank" rel="noopener noreferrer">Qwen2.5 technical report</a> (2024);
+                    <a href="{{SRC_GEMMA3_URL}}" target="_blank" rel="noopener noreferrer">Gemma 3 technical report</a> (2025);
+                    <a href="{{SRC_DEEPSEEKMATH_URL}}" target="_blank" rel="noopener noreferrer">DeepSeekMath</a> (Shao et al., 2024), where GRPO comes from;
+                    <a href="{{SRC_DEEPSEEK_R1_URL}}" target="_blank" rel="noopener noreferrer">DeepSeek-R1</a> (2025);
+                    <a href="{{SRC_TULU3_URL}}" target="_blank" rel="noopener noreferrer">Tülu 3</a> (Lambert et al., 2024), which named RLVR.
+                </p>
+
+                <h4>Tags:</h4>
+                <div class="tag-row" style="--domain: var(--d-llm);">
+                    <span class="domain-pill">LLM &amp; RAG</span>
+                    <span class="stack-tag">Language Adaptation</span>
+                    <span class="stack-tag">Continued Pretraining</span>
+                    <span class="stack-tag">GRPO</span>
+                    <span class="stack-tag">Tokenizers</span>
+                    <span class="stack-tag">Hindi</span>
+                    <span class="stack-tag">PyTorch</span>
+                </div>
+            </div>

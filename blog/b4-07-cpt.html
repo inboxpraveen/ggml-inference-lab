@@ -1,0 +1,183 @@
+            <h2>Step 3, continued pretraining, second half: what the knobs do, and the main run</h2>
+            <p>
+                Four hundred steps is {{RUN_ABL_16K_MEAN_TOKENS_M}}M tokens and about ten minutes, which is
+                cheap enough to ask the recipe's questions one at a time. Each ablation below is a single
+                run with everything held fixed except the one thing named, all from the same shuffled data
+                order, all scored on the same held-out documents. The vocabulary is the first question,
+                because it changes what a step means.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/tokenizer-ablation.svg" alt="Two panels of held-out Hindi bits per character over 400 steps for the stock tokenizer and the 8k, 16k and 29k extended tokenizers; left against Hindi characters trained on, right against wall-clock minutes." loading="lazy" decoding="async">
+                <figcaption>The same 400 steps under four tokenizers. Left: against Hindi characters seen. Right: against training time. Every run starts from the same weights; the extended-tokenizer runs start higher because their new rows are untrained.</figcaption>
+            </figure>
+
+            <p>
+                Read the left panel first, because it says something I didn't expect. Per character of
+                Hindi seen, the stock tokenizer learns faster: by {{ABL_STOCK_HI_CHARS_M}}M characters it's at
+                {{RUN_ABL_STOCK_BPC_HI}} bits per character and the extended tokenizer at that point is still
+                at {{RUN_ABL_16K_MEAN_BPC100_HI}}. That's not a paradox. Under the stock tokenizer a
+                character is four tokens, so every character gets four forward passes and four gradient
+                updates, and the model already knows its byte tokens. The extended tokenizer is spending
+                its first hundred steps learning what {{NEW_TOKENS_16K}} new rows mean. But nobody trains
+                by the character; they train by the step, and the right panel is the same runs in minutes.
+                There the extended tokenizer passes the stock one inside three minutes and ends the 400 steps
+                at {{RUN_ABL_16K_MEAN_BPC_HI}} against {{RUN_ABL_STOCK_BPC_HI}}, having seen
+                {{ABL_16K_HI_CHARS_M}}M characters to the stock run's {{ABL_STOCK_HI_CHARS_M}}M in the same
+                time. And that's the training side only. At inference the extended model reads and writes
+                Hindi in {{TPW_GAIN_16K}}x fewer tokens forever, which on the bandwidth arithmetic of the
+                first three posts is {{TPW_GAIN_16K}}x the words per second and {{TPW_GAIN_16K}}x the
+                context. The three extended sizes end within a few hundredths of each other
+                ({{RUN_ABL_8K_BPC_HI}}, {{RUN_ABL_16K_MEAN_BPC_HI}} and {{RUN_ABL_32K_BPC_HI}} for 8k, 16k and
+                29k added tokens), which says the vocabulary size is a fertility decision, not a quality
+                one, at least at this budget; more rows are more parameters to train and the extra rows
+                are the rarest words.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/replay.svg" alt="Two panels over 400 steps for 0%, 10% and 30% English replay: held-out Hindi bits per character on the left, held-out English bits per character on the right." loading="lazy" decoding="async">
+                <figcaption>Replay share. Left, Hindi; right, English on held-out FineWeb-Edu. The model's English before any of this is {{BPC_STOCK_EN}} bits per character.</figcaption>
+            </figure>
+
+            <p>
+                This is the ablation whose result I'd have bet on and still found useful to see. With no
+                English in the mix, Hindi reaches {{RUN_ABL_NOREPLAY_BPC_HI}} bits per character after 400
+                steps, the best of the three by a hair, and English goes from {{BPC_STOCK_EN}} to
+                {{RUN_ABL_NOREPLAY_BPC_EN}}, which is a {{NOREPLAY_EN_DRIFT_PCT}}% loss on text from the
+                model's own pretraining distribution, in nine minutes. Ten percent English costs
+                {{ABL_NOREPLAY_HI_GAIN_VS_10}} bits of Hindi and holds English to {{RUN_ABL_16K_MEAN_BPC_EN}};
+                thirty percent costs {{ABL_REPLAY30_HI_LOSS_VS_10}} more bits of Hindi and holds it to
+                {{RUN_ABL_REPLAY30_BPC_EN}}. None of them holds English still, and none of them should be
+                expected to: the model is being asked to fit a second language into the same 135M parameters,
+                and something has to move. Ibrahim and colleagues' {{SRC_IBRAHIM_CPT_REPLAY_STRONG_SHIFT_PCT}}%
+                for a strong shift and Swallow's {{SRC_SWALLOW_JA_EN_RATIO_USED}} are the two ends of the
+                published range; I used ten for the main run because Hindi is the point and the English
+                loss at ten is one I'd take, and because the replay share is the one knob you can revisit
+                later without retraining anything else.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/lr.svg" alt="Two panels over 400 steps at peak learning rates of 2e-4, 5e-4 and 1e-3: held-out Hindi bits per character on the left, held-out English on the right." loading="lazy" decoding="async">
+                <figcaption>Peak learning rate, warmup 50 steps, cosine to a tenth. SmolLM2's own pretraining peak was several times the highest of these; a model being re-warmed after a long decay tolerates less.</figcaption>
+            </figure>
+
+            <p>
+                The learning rate buys Hindi with English. At a peak of 2e-4 the model reaches
+                {{RUN_ABL_LR2E_4_BPC_HI}} bits per character of Hindi and keeps English at
+                {{RUN_ABL_LR2E_4_BPC_EN}}; at 5e-4, {{RUN_ABL_16K_MEAN_BPC_HI}} and
+                {{RUN_ABL_16K_MEAN_BPC_EN}}; at 1e-3, {{RUN_ABL_LR1E_3_BPC_HI}} and
+                {{RUN_ABL_LR1E_3_BPC_EN}}, which is the best Hindi of any 400-step run in this post and the
+                worst English, a {{LR1E3_EN_DRIFT_PCT}}% loss. There's no free point on that line; the
+                replay share and the learning rate are two views of the same trade. I took 5e-4 for the
+                main run as the middle of the range, with the note that a longer run spends most of its
+                time below the peak anyway, so the choice matters less than the ablation makes it look. The
+                one setting I'd call wrong is the lowest: at 2e-4 the new embedding rows are still
+                visibly behind after 400 steps, because {{NEW_TOKENS_16K}} rows that start as averages need
+                to move a long way and a small step takes longer to get them there.
+            </p>
+
+            <h3>The main run</h3>
+            <p>
+                With those settled (16k tokens, mean initialisation, 10% English, peak {{RUN_MAIN_LR}}), the
+                main run is {{RUN_MAIN_STEPS}} steps: {{RUN_MAIN_TOKENS_M}}M tokens, of which
+                {{RUN_MAIN_HI_TOKENS_M}}M are Hindi, which is {{RUN_MAIN_HI_CHARS_M}}M characters of Hindi
+                text, in {{RUN_MAIN_MIN}} minutes on the laptop. For scale, that's about
+                {{MAIN_SHARE_OF_FETCHED_PCT}}% of the Hindi I downloaded, which was itself under one percent
+                of the FineWeb-2 Hindi subset, which is one of {{SRC_FINEWEB2_LANGUAGE_SCRIPT_PAIRS}} language
+                subsets in a corpus that is itself a filtered slice of the web.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/main-run.svg" alt="Held-out Hindi and English bits per character over the main continued-pretraining run, with the stock model's values as dashed lines." loading="lazy" decoding="async">
+                <figcaption>The main run, evaluated every 100 steps on the held-out sets. Dashed lines are the stock model before any of this.</figcaption>
+            </figure>
+
+            <p>
+                Hindi goes from {{BPC_STOCK_HI}} bits per character (stock tokenizer) through
+                {{RUN_MAIN_BPC0_HI}} (the moment the new rows go in) to {{RUN_MAIN_BPC_HI}} at the end,
+                {{BPC_MAIN_HI}} on the larger {{EVAL_DOCS}}-document set the size chart uses. In that chart
+                the adapted 135M now sits below every stock model except the one built for the language:
+                {{BPC_QWEN3_17_HI}} for Qwen3-1.7B, {{BPC_QWEN15_HI}} for Qwen2.5-1.5B, {{BPC_17B_HI}} for
+                SmolLM2-1.7B, twelve times its size, and {{BPC_SARVAM_HI}} for Sarvam-1, which is still a
+                long way ahead. The 1,200-step run had already crossed all three of the larger stock
+                models at {{RUN_RUN1200_BPC_HI}}; the main run's extra {{RUN_MAIN_MIN}} minutes bought
+                the rest. The shape of the curve is worth reading too: the last thousand steps take Hindi
+                from {{MAIN_BPC_HI_2000}} to {{RUN_MAIN_BPC_HI}}, which is the cosine schedule running out of learning rate,
+                not the model running out of things to learn.
+            </p>
+            <p>
+                The English column is the part I said I'd state plainly. It moves from {{RUN_MAIN_BPC0_EN}}
+                to {{RUN_MAIN_BPC_EN}} bits per character, a {{MAIN_EN_DRIFT_PCT}}% loss on the model's own
+                pretraining distribution, and most of it is in the first thousand steps; after that the curve
+                is flat, because the learning rate has decayed to where it can't move much either way. Ten
+                percent replay slowed the forgetting, it didn't stop it, and at this run length that is the
+                price of the Hindi number above. The replay ablation says what the alternative costs: thirty
+                percent held English at {{RUN_ABL_REPLAY30_BPC_EN}} over 400 steps for
+                {{ABL_REPLAY30_HI_LOSS_VS_10}} bits of Hindi. If the English matters for your use, that's the
+                knob, and it's the one that doesn't require retraining anything else. I kept ten for the main
+                run so that the three runs in the next chart are the same recipe at three lengths.
+            </p>
+
+            <p>
+                One objection to that chart is fair and I want to meet it before the scaling section, not
+                after. The held-out Hindi documents are from FineWeb-2, the same crawl the training text came
+                from, and the stock models never saw that distribution. A model that has learned the style of
+                one crawl would look better on that crawl than it deserves. So here are the same models on a
+                second set that nothing in this post trains on: {{WIKI_DOCS}} Hindi Wikipedia articles, a
+                fixed random sample from the November 2023 dump, encyclopedic register rather than web pages.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/wiki.svg" alt="Two scatter panels of Hindi bits per character against parameters for the same stock models and this post's 135M: left on the held-out FineWeb-2 documents, right on Hindi Wikipedia articles." loading="lazy" decoding="async">
+                <figcaption>Left, the held-out FineWeb-2 set every other chart uses; right, Hindi Wikipedia. Same models, same scoring code, same 1,500 characters per document.</figcaption>
+            </figure>
+
+            <p>
+                The objection is half right, and I'm glad I ran it. On Wikipedia the adapted 135M scores
+                {{WIKI_MAIN_HI}} bits per character, not {{BPC_MAIN_HI}}: a third of a bit of the FineWeb-2
+                result was the model knowing the crawl's register, and the stock models, which never saw that
+                register, lose nothing in the move ({{WIKI_17B_HI}} for SmolLM2-1.7B against {{BPC_17B_HI}},
+                {{WIKI_QWEN15_HI}} for Qwen2.5-1.5B against {{BPC_QWEN15_HI}}). The ordering survives, just
+                barely: on text it never trained on, the 135M is still under Qwen3-1.7B ({{WIKI_QWEN3_17_HI}}),
+                under SmolLM2-1.7B ({{WIKI_17B_HI}}) and a hundredth or two under Qwen2.5-1.5B
+                ({{WIKI_QWEN15_HI}}), while Sarvam-1 sits at {{BPC_SARVAM_HI}} and {{WIKI_SARVAM_HI}}. The 1,200-step
+                run does not survive it: at {{WIKI_RUN1200_HI}} on Wikipedia it's level with the 1.7B models
+                it had beaten by a third of a bit on the crawl. So the sentence I can defend is narrower than
+                the first chart suggests, and it's this: after {{RUN_MAIN_MIN}} minutes on a laptop, a 135M
+                model matches or edges the best general-purpose stock models under 2B on Hindi text from a
+                source it never saw, and is a long way behind the one model that was built for the language.
+                Every Hindi number after this point is quoted on both sets where I have both.
+            </p>
+
+            <h3>If we keep going</h3>
+            <p>
+                The curve above is one run, and the shape of its last third is the learning rate decaying,
+                not the data running out; a single cosine schedule can't tell you what more data would do.
+                The honest version of "what if we continued" is to run the whole schedule at several
+                budgets and look at where each one ends. I have three: the 400-step ablation, a 1,200-step
+                run, and the main run, each with its own warmup and decay, each ending at a different number
+                of Hindi tokens.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/scaling.svg" alt="Log-log plot of final held-out Hindi bits per character against Hindi tokens for three complete runs of 400, 1,200 and the main run's steps, with a fitted power law extended to the right and horizontal lines for the stock 360M, 1.7B, Qwen and Sarvam-1 models." loading="lazy" decoding="async">
+                <figcaption>Three complete runs, one line through them, and the stock models as horizontal lines. The line is a power law fitted to three points, so treat the extension as a direction, not a forecast.</figcaption>
+            </figure>
+
+            <p>
+                The three points sit close to a straight line on log-log axes, and the line's slope is
+                {{SCALE_EXP}}: every doubling of Hindi tokens takes about {{SCALE_PER_DOUBLING_PCT}} percent off the bits per
+                character, for now. Read the horizontal lines against it. The 400-step run, ten minutes,
+                already sits under SmolLM2-360M; the 1,200-step run is under every non-Indic stock model on
+                the chart, including the two 1.7B models (on this set; on Wikipedia it is level with them);
+                and the main run is clear of them on both. The line
+                reaches Sarvam-1's {{BPC_SARVAM_HI}} at about {{SCALE_TOKENS_TO_SARVAM}} Hindi tokens,
+                roughly four times the main run, and I want to be careful with that number. A power law
+                fitted to three points will fit almost anything, and these curves bend: the returns from the
+                same data source flatten as the model learns what that source has to teach, and a 135M
+                model has a floor that a 2B model trained on {{SRC_SARVAM1_INDIC_TOKENS_SHORT}} tokens of Indic text
+                does not. What the chart does support is the weaker claim, which is the one the post set out
+                to test: the recipe keeps paying as it's extended, the rate of payment hasn't started to
+                fall inside the range I could afford, and the larger general-purpose stock models are
+                already behind. Getting near Sarvam-1 would be an experiment, not an extrapolation.
+            </p>

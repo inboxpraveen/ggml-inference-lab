@@ -1,0 +1,238 @@
+            <h2>Step 5, reinforcement learning: rewards a script can check</h2>
+            <p>
+                Now the part I expected to be hard. GRPO, as DeepSeekMath describes it, is a policy-gradient
+                method with the value network removed: for each prompt you sample a group of answers, score
+                them, and use the group's own mean and spread to decide which answers to push up and which
+                down. Written out, it's short enough to read in one sitting, so here it is, abridged from the
+                script by only the bookkeeping.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-language">grpo.py, the loop (Python, PyTorch)</span>
+                    <button class="copy-button">Copy</button>
+                </div>
+                <pre><code><span class="keyword">for</span> step <span class="keyword">in</span> range(steps):
+    items = sample_prompts()                       <span class="comment"># B prompts: labelled reviews or open Hindi questions</span>
+    p_ids, p_mask, comp_ids, comp_text = generate(items)   <span class="comment"># G sampled completions per prompt, temperature 1</span>
+
+    <span class="comment"># 1. score every completion with a rule, not a model</span>
+    rewards = []
+    <span class="keyword">for</span> i, it <span class="keyword">in</span> enumerate(items):
+        <span class="keyword">for</span> g <span class="keyword">in</span> range(G):
+            c = comp_text[i * G + g]
+            rewards.append(reward_sentiment(c, it[<span class="string">'label'</span>]) <span class="keyword">if</span> it[<span class="string">'task'</span>] == <span class="string">'sent'</span> <span class="keyword">else</span> reward_language(c))
+
+    <span class="comment"># 2. advantages: how each answer did against its own group</span>
+    R = torch.tensor(rewards).view(B, G)
+    adv = ((R - R.mean(<span class="number">1</span>, keepdim=<span class="keyword">True</span>)) / (R.std(<span class="number">1</span>, keepdim=<span class="keyword">True</span>) + <span class="number">1e-4</span>)).view(-<span class="number">1</span>)
+
+    <span class="comment"># 3. log-probability of every completion token under the current policy</span>
+    lp, cmask = logprobs_of(policy, p_ids, p_mask, comp_ids)     <span class="comment"># lp: (B*G, T), cmask marks real tokens</span>
+    n_tok = cmask.sum()
+    loss = -(adv.unsqueeze(<span class="number">1</span>) * lp * cmask).sum() / n_tok           <span class="comment"># push good answers up, bad ones down</span>
+
+    <span class="comment"># 4. optional leash: KL to the policy we started from (logged always, penalised if beta &gt; 0)</span>
+    <span class="keyword">with</span> torch.no_grad():
+        lp_ref, _ = logprobs_of(ref, p_ids, p_mask, comp_ids)
+    d = lp_ref - lp
+    kl = torch.exp(d) - d - <span class="number">1</span>
+    <span class="keyword">if</span> beta &gt; <span class="number">0</span>:
+        loss = loss + beta * (kl * cmask).sum() / n_tok
+
+    loss.backward()
+    grad_norm = master.step()                       <span class="comment"># clip to 1, AdamW on the fp32 copy, write back to bf16</span></code></pre>
+            </div>
+
+            <p>
+                Three things about it that the papers say and the code makes concrete. There is no
+                probability ratio and no clipping, which is what PPO is mostly made of, because the loop
+                takes exactly one gradient step per batch of samples; the policy that generated the samples
+                is the policy being updated, and the ratio would be one. (TRL's trainer and the DeepSeek
+                papers keep the ratio because they reuse each batch for several updates.) The advantage is
+                normalised within the group, so a prompt where every sample scores the same contributes
+                nothing, which is both the method's efficiency and its failure mode: if the model never
+                produces a right answer, there is nothing to learn from, and that's why the cold start
+                matters. And the loss is averaged over tokens across the whole batch rather than per
+                sequence, which is TRL's default and the DAPO paper's recommendation, and which means a long
+                wrong answer is pushed down harder than a short one.
+            </p>
+
+            <h3>Two rewards</h3>
+            <p>
+                The sentiment reward is the R1 recipe at toy scale: parse the first JSON object in the
+                completion; 1.0 if it has a valid label and the label is right, 0.2 if it's valid JSON with
+                the wrong label, 0 if there's no parseable answer, and a tenth off if there's anything
+                besides the JSON, so the model learns to stop. The language reward has no reference answer
+                at all. It's the share of Devanagari characters in the completion, times a window on the
+                length (full marks between 8 and 120 words, tapering outside), times a distinct-word factor.
+                The last factor wasn't in my first draft. Without it the highest-scoring possible answer to
+                any question is one Hindi word repeated sixty times, which is a perfect score on script and
+                on length, and a 135M policy with no KL leash will find that in a few dozen steps. I added
+                the factor before running rather than after, on the principle that if you can see the hack
+                by reading the reward function, the optimiser can too, and the training samples are logged
+                every hundred steps so I could check.
+            </p>
+            <p>
+                Each step draws {{GRPO_PROMPTS}} prompts, {{GRPO_P_SENT_PCT}}% of them sentiment reviews and
+                the rest open Hindi questions, samples {{GRPO_GROUP}} completions each at temperature
+                {{GRPO_TEMP}} up to {{GRPO_MAX_NEW}} tokens, and takes one step at a learning rate of
+                {{GRPO_LR}} with no KL penalty (beta {{GRPO_BETA}}, TRL's default), while logging the KL
+                anyway. {{GRPO_STEPS}} steps is {{GRPO_SAMPLES_TOTAL}} sampled answers, and at
+                {{GRPO_SEC_PER_STEP}} seconds a step, most of it generation, it took {{GRPO_MIN}} minutes.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/grpo.svg" alt="Two panels. Left: training-batch rewards over GRPO steps; the sentiment reward and valid-JSON share start near 1 and stay there, the language reward climbs from 0.9 to 0.99. Right: held-out sentiment accuracy flat around 0.93, valid-JSON share at 1, and the greedy language reward falling from 0.58 to 0.46." loading="lazy" decoding="async">
+                <figcaption>Left, the rewards on the training batches, smoothed over fifteen steps. Right, the same quantities on held-out reviews and prompts the model never trained on, decoded greedily every {{GRPO_EVAL_EVERY}} steps.</figcaption>
+            </figure>
+
+            <p>
+                Read the two panels against each other, because that's the whole story. On the left, the
+                policy's own samples: the sentiment reward starts at {{GRPO_SENT_R0}} and ends at
+                {{GRPO_SENT_R}}, the language reward goes from {{GRPO_OPEN_R0}} to {{GRPO_OPEN_R}}. The
+                optimiser did exactly what it was asked to and the training curves say success. On the
+                right, the same model decoded greedily on prompts it never saw: sentiment accuracy
+                {{GRPO_ACC0}} at step 0 and {{GRPO_ACC}} at step {{GRPO_STEPS}}, with every point in between
+                inside the noise of 200 reviews; and the language reward going the wrong way, {{GRPO_LANG0}}
+                to {{GRPO_LANG}}, while the Devanagari share it contains went up ({{GRPO_DEV0}} to
+                {{GRPO_DEV}}) and the answers got longer ({{GRPO_WORDS0}} to {{GRPO_WORDS}} words). Two
+                different things went wrong and they're worth separating.
+            </p>
+            <p>
+                The sentiment half didn't move because there was nothing left to move. The cold-start
+                examples had already taken the format to 100% and the accuracy to the low nineties, so most
+                groups of eight samples were eight correct answers with identical scores, and a group with no
+                spread contributes nothing: over the run, {{GRPO_ZERO_VAR_PCT}}% of all groups had zero
+                variance. That's not a bug in GRPO; it's the method telling you the reward has been
+                saturated by the supervised stage. The cold start ablation below shows what the same loop
+                does when it is given something to learn.
+            </p>
+            <p>
+                The language half is the more instructive failure, because the optimiser found a hole in the
+                reward I had written specifically to close. The distinct-word factor saturates at 60% distinct
+                words, and I chose 60% because that's roughly where real Hindi answers sit (the held-out
+                instruction answers of sixty words or more have a median of 66% distinct words, because
+                Hindi repeats its function words). So an answer that repeats a whole clause every thirty
+                words still clears the bar, and repeating a clause is a cheap way to be long and fully
+                Devanagari, which is what the other two factors pay for. Sampling at temperature 1 finds
+                that pattern some of the time; greedy decoding, which follows the most probable path, finds
+                it most of the time. On the full held-out set, {{TASK_GRPO_LOOP_PCT}}% of the greedy answers loop
+                after RL against {{TASK_SFT_LOOP_PCT}}% before it, and {{TASK_GRPO_LOOP_SAMPLED_PCT}}% of the
+                sampled ones against {{TASK_SFT_LOOP_SAMPLED_PCT}}%. The reward the loop was optimising,
+                scored on its own samples, went up; the model got worse. If you remember one thing from this
+                section, make it that pair of sentences.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/grpo-kl.svg" alt="Two panels over GRPO steps: KL divergence from the SFT policy per token on the left, mean completion length in tokens on the right." loading="lazy" decoding="async">
+                <figcaption>How far the policy moved from where SFT left it, in nats per completion token, and how long its answers got. With no KL penalty this is the number to watch; it is what the penalty would have held down.</figcaption>
+            </figure>
+
+            <p>
+                The KL is small throughout: {{GRPO_KL_MAX}} nats per token at the smoothed peak (single
+                steps spike to {{GRPO_KL_SPIKE}}), {{GRPO_KL}} at the end, which is a policy that has moved
+                a little and deliberately. The completion length has
+                the same shape as the KL. I mention this because the usual first response to a run that
+                went wrong is to add the KL penalty back, and here it wouldn't have helped: the policy
+                didn't run away from the SFT model, it took a short walk to a place the reward liked, and
+                a penalty for distance would have slowed the walk without changing the destination. The
+                fix is in the reward, so that's where the next run changed.
+            </p>
+
+            <h3>Reading the reward again</h3>
+            <p>
+                The repaired reward is the first one times a loop penalty: the share of repeated word
+                trigrams in the answer, which is under 7% for nine in ten of the held-out reference answers
+                and typically above 30% for an answer that loops, mapped linearly to a factor of 1 at zero repeats and 0
+                at 30%. Nothing else changed: same starting checkpoint, same prompts, same learning rate, same
+                group size, {{GRPO_V2_STEPS}} steps; in the script it's the <code>--reward v2</code> flag,
+                which swaps the function the loop above calls for the open prompts. Under the new reward a looping answer scores near zero,
+                so the group has spread again wherever the policy sometimes loops, and the gradient points
+                away from it.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/rewards.svg" alt="Three bar panels comparing the model after SFT, after GRPO with the first reward, after GRPO with the repaired reward, and after the repaired reward with sampling at temperature 0.7: sentiment accuracy on 598 reviews; share of open-prompt answers that loop under greedy and sampled decoding; and the repaired language reward under greedy and sampled decoding." loading="lazy" decoding="async">
+                <figcaption>The checkpoints on the full held-out sets. Looping is an answer whose distinct-word ratio is under 0.6. The repaired reward is scored on every checkpoint, whichever reward trained it, once with greedy decoding and once with the sampling the training loop used.</figcaption>
+            </figure>
+
+            <p>
+                Half a fix, and the half it fixed is the informative part. On the distribution the loop
+                actually samples from, temperature 1, the repaired reward did what it was written to do:
+                the sampled score under the new reward went from {{TASK_SFT_LANGV2_SAMPLED}} after SFT to
+                {{TASK_GRPOV2_LANGV2_SAMPLED}}, and the share of sampled answers that loop stayed at
+                {{TASK_GRPOV2_LOOP_SAMPLED_PCT}}% against {{TASK_SFT_LOOP_SAMPLED_PCT}}% before, where the
+                first reward had let it climb to {{TASK_GRPO_LOOP_SAMPLED_PCT}}%. Sentiment accuracy on the
+                full set came out at {{TASK_GRPOV2_ACC}}, the best of the three checkpoints by a margin that
+                is inside the noise. But decode the same model greedily and {{TASK_GRPOV2_LOOP_PCT}}% of its
+                answers still loop, more than the {{TASK_SFT_LOOP_PCT}}% it started from, and the greedy score
+                under the repaired reward went down, {{TASK_SFT_LANGV2}} to {{TASK_GRPOV2_LANGV2}}. The
+                penalty can only act on answers the policy produces during training, and at temperature 1
+                a 135M policy rarely produces the greedy path; the training batches scored
+                {{GRPO_V2_OPEN_R}} on the open prompts by the end, which means the loop saw almost nothing
+                to penalise. Reinforcement learning shapes the distribution it samples from, and no other.
+                If the model will be served greedily, the samples have to look like greedy decoding, which
+                is the last run in this section.
+            </p>
+            <p>
+                So the last run changes one number: the sampling temperature, from 1 to 0.7, with the
+                repaired reward, {{GRPO_V2_T07_STEPS}} steps. The training batches now score
+                {{GRPO_V2_T07_OPEN_R0}} on the open prompts at the start instead of {{GRPO_V2_OPEN_R0}}, because at 0.7 the
+                policy's samples look much more like its greedy answers and a good share of them loop, and
+                the penalty finally has something to push against. It pushes. On the full held-out sets
+                the share of greedy answers that loop falls from {{TASK_SFT_LOOP_PCT}}% after SFT to
+                {{TASK_GRPOV2T07_LOOP_PCT}}%, the first run in this section to move that number the right
+                way; the greedy score under the repaired reward goes from {{TASK_SFT_LANGV2}} to
+                {{TASK_GRPOV2T07_LANGV2}} and under the first reward from {{TASK_SFT_LANG}} to
+                {{TASK_GRPOV2T07_LANG}}; the sampled answers almost never loop ({{TASK_GRPOV2T07_LOOP_SAMPLED_PCT}}%);
+                the answers got shorter, {{TASK_SFT_WORDS}} to {{TASK_GRPOV2T07_WORDS}} words, rather than
+                longer; and sentiment accuracy came out at {{TASK_GRPOV2T07_ACC}}, the best of any checkpoint
+                in the post. This is the checkpoint the last section reports. Two things it isn't. It isn't
+                a cure: nearly half the greedy answers still loop, and the fix for that is more likely in
+                the supervised data than in the reward. And it isn't a general rule that lower is better;
+                at 0.7 the groups have less spread everywhere ({{GRPO_V2_T07_ZERO_VAR_PCT}}% of them had
+                none, against {{GRPO_V2_ZERO_VAR_PCT}}% at temperature 1), and a run that started from a
+                weaker checkpoint might need the exploration. It's the narrower rule that the
+                samples should resemble the decoding you'll serve, which I'd have called obvious before I
+                spent two runs learning it. One last number, because I promised to watch it: the text
+                model. Hindi bits per character on the 400-document held-out crawl set went from {{BPC_SFT_HI}} after SFT to
+                {{BPC_GRPO_HI}} after the first run, {{BPC_GRPOV2_HI}} after the repaired one and
+                {{BPC_GRPOV2T07_HI}} after this one; on Wikipedia the first run sat at {{WIKI_GRPO_HI}} and
+                this one at {{WIKI_GRPOV2T07_HI}}. RL moved the text model by less than the supervised stage
+                did, in the same direction, and the run that fixed the answers cost it the least.
+            </p>
+
+            <h3>How much cold start the reward needs</h3>
+            <p>
+                The other question the first run raised was whether the supervised stage had done RL's job
+                for it. The clean way to ask is to run the same GRPO loop from three SFT checkpoints that differ
+                only in how many labelled JSON examples were mixed in (none, 20, and the 100 of the main
+                run) and compare the first {{GRPO_NOCOLD_STEPS}} steps.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/coldstart.svg" alt="Two panels over GRPO steps for three starting checkpoints with 0, 20 and 100 cold-start examples: valid-JSON share on held-out reviews on the left and sentiment accuracy on the right." loading="lazy" decoding="async">
+                <figcaption>Valid-JSON share and sentiment accuracy on 200 held-out reviews every 50 GRPO steps, from three supervised checkpoints. Same rewards, same prompts, same seed; the 100-example run is the first 150 steps of the main run.</figcaption>
+            </figure>
+
+            <p>
+                The answer has a floor and a ceiling, and both are visible. With no labelled examples the
+                supervised model never produces the JSON, so the reward is zero for every sample in every
+                group, every group has zero spread, and {{GRPO_NOCOLD_STEPS}} steps of GRPO change nothing:
+                {{GRPO_NOCOLD_FMT_PCT}}% valid at the start, {{GRPO_NOCOLD_FMT_PCT}}% at the end, while the
+                loop cheerfully optimises the language reward on the other prompts. Nothing in the method
+                can invent a behaviour it never samples; that's the floor, and it is exactly the R1 paper's
+                reason for the cold start. With twenty examples the format is already at
+                {{GRPO_COLD20_FMT0_PCT}}% and the accuracy at {{GRPO_COLD20_ACC0_PCT}}%, which is the
+                interesting start: the reward has spread to work with and something to teach, and fifty
+                steps later the accuracy is {{GRPO_COLD20_BEST_ACC}}, level with the 100-example checkpoint
+                before any RL, ending at {{GRPO_COLD20_ACC}} after {{GRPO_COLD20_STEPS}}. That is the
+                picture the RLVR papers draw, at toy scale: a handful of demonstrations to make the reward
+                reachable, and the reward does the rest. With a hundred examples the supervised stage has
+                already done that work and RL's job on this task is finished before it starts, which is the
+                ceiling, and why the main run's sentiment curve is flat. The practical reading: the number
+                of cold-start examples you need is the number that makes the reward non-zero some of the
+                time, and past that you're spending labelled data on something the reward would have
+                taught for free.
+            </p>

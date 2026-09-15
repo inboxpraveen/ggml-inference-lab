@@ -1,0 +1,224 @@
+== abl-stock Tue Sep 15 09:42:49 IST 2026
+hindi 158.1M tokens, english 13.3M tokens; tokens per step 16384
+  eval step 0: hi bpb 0.932  en bpb 0.857  (0.0M tokens, 0.2 min)
+step 1/400 loss 1.760 ema 1.760 lr 1.00e-05 gn 1.00 1356 tok/s  0.2 min  mem 4.7 GB
+step 51/400 loss 1.601 ema 1.689 lr 5.00e-04 gn 1.38 12025 tok/s  1.2 min  mem 5.8 GB
+  eval step 100: hi bpb 0.796  en bpb 0.909  (1.6M tokens, 2.3 min)
+step 101/400 loss 1.670 ema 1.612 lr 4.78e-04 gn 0.88 11985 tok/s  2.3 min  mem 5.8 GB
+step 151/400 loss 1.621 ema 1.534 lr 4.15e-04 gn 0.71 12593 tok/s  3.3 min  mem 5.8 GB
+  eval step 200: hi bpb 0.739  en bpb 0.928  (3.3M tokens, 4.4 min)
+step 201/400 loss 1.776 ema 1.504 lr 3.25e-04 gn 0.79 12457 tok/s  4.4 min  mem 5.8 GB
+step 251/400 loss 1.448 ema 1.473 lr 2.25e-04 gn 0.57 12738 tok/s  5.4 min  mem 5.8 GB
+  eval step 300: hi bpb 0.706  en bpb 0.925  (4.9M tokens, 6.5 min)
+step 301/400 loss 1.236 ema 1.445 lr 1.35e-04 gn 0.61 12624 tok/s  6.5 min  mem 5.8 GB
+step 351/400 loss 1.331 ema 1.437 lr 7.23e-05 gn 0.46 12809 tok/s  7.5 min  mem 5.8 GB
+  eval step 400: hi bpb 0.690  en bpb 0.919  (6.6M tokens, 8.6 min)
+== abl-16k-mean Tue Sep 15 09:51:35 IST 2026
+tokenized hi_train: 150M chars -> 38.9M tokens (3.86 chars/token) in 21s
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/400 loss 8.784 ema 8.784 lr 1.00e-05 gn 17.30 1743 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 5.780 ema 7.392 lr 5.00e-04 gn 1.54 11770 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.782  en bpb 0.920  (1.6M tokens, 2.3 min)
+step 101/400 loss 4.818 ema 6.070 lr 4.78e-04 gn 1.11 11755 tok/s  2.3 min  mem 6.1 GB
+step 151/400 loss 4.819 ema 5.346 lr 4.15e-04 gn 0.98 12204 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.697  en bpb 0.939  (3.3M tokens, 4.5 min)
+step 201/400 loss 4.214 ema 4.924 lr 3.25e-04 gn 0.96 12038 tok/s  4.6 min  mem 6.1 GB
+step 251/400 loss 4.451 ema 4.687 lr 2.25e-04 gn 0.85 12249 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.661  en bpb 0.935  (4.9M tokens, 6.7 min)
+step 301/400 loss 4.579 ema 4.515 lr 1.35e-04 gn 1.59 12159 tok/s  6.8 min  mem 6.1 GB
+step 351/400 loss 4.516 ema 4.424 lr 7.23e-05 gn 0.82 12298 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.649  en bpb 0.929  (6.6M tokens, 8.9 min)
+== abl-16k-random Tue Sep 15 10:01:05 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+added 16000 embedding rows, init=random, tied=True
+  eval step 0: hi bpb 3.139  en bpb 0.895  (0.0M tokens, 0.1 min)
+step 1/400 loss 18.448 ema 18.448 lr 1.00e-05 gn 930.08 1714 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 6.554 ema 11.936 lr 5.00e-04 gn 3.43 11728 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.875  en bpb 0.967  (1.6M tokens, 2.3 min)
+step 101/400 loss 5.271 ema 8.119 lr 4.78e-04 gn 1.07 11710 tok/s  2.4 min  mem 6.1 GB
+step 151/400 loss 5.184 ema 6.380 lr 4.15e-04 gn 8.31 12171 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.761  en bpb 0.962  (3.3M tokens, 4.5 min)
+step 201/400 loss 4.507 ema 5.542 lr 3.25e-04 gn 0.80 12067 tok/s  4.5 min  mem 6.1 GB
+step 251/400 loss 4.782 ema 5.137 lr 2.25e-04 gn 0.78 12285 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.722  en bpb 0.952  (4.9M tokens, 6.7 min)
+step 301/400 loss 4.935 ema 4.894 lr 1.35e-04 gn 0.70 12184 tok/s  6.7 min  mem 6.1 GB
+step 351/400 loss 4.862 ema 4.769 lr 7.23e-05 gn 0.80 12317 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.708  en bpb 0.945  (6.6M tokens, 8.9 min)
+== abl-16k-hf Tue Sep 15 10:10:10 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+[transformers] The new embeddings will be initialized from a multivariate normal distribution that has old embeddings' mean and covariance. As described in this article: https://nlp.stanford.edu/~johnhew/vocab-expansion.html. To disable this, use `mean_resizing=False`
+added 16000 embedding rows, init=hf, tied=True
+  eval step 0: hi bpb 2.417  en bpb 0.857  (0.0M tokens, 0.1 min)
+step 1/400 loss 14.717 ema 14.717 lr 1.00e-05 gn 101.96 1762 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 6.782 ema 10.654 lr 5.00e-04 gn 1.81 11820 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 1.059  en bpb 0.943  (1.6M tokens, 2.3 min)
+step 101/400 loss 6.248 ema 8.057 lr 4.78e-04 gn 156.88 11792 tok/s  2.3 min  mem 6.1 GB
+step 151/400 loss 6.074 ema 7.186 lr 4.15e-04 gn 23.00 12239 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.950  en bpb 0.939  (3.3M tokens, 4.5 min)
+step 201/400 loss 5.581 ema 6.586 lr 3.25e-04 gn 24.47 12080 tok/s  4.5 min  mem 6.1 GB
+step 251/400 loss 5.678 ema 6.174 lr 2.25e-04 gn 32.49 12291 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.855  en bpb 0.932  (4.9M tokens, 6.7 min)
+step 301/400 loss 5.799 ema 5.808 lr 1.35e-04 gn 2.87 12193 tok/s  6.7 min  mem 6.1 GB
+step 351/400 loss 5.570 ema 5.565 lr 7.23e-05 gn 1.09 12331 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.821  en bpb 0.925  (6.6M tokens, 8.9 min)
+== abl-noreplay Tue Sep 15 10:19:16 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/400 loss 9.440 ema 9.440 lr 1.00e-05 gn 18.56 1748 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 6.180 ema 7.858 lr 5.00e-04 gn 1.77 11748 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.776  en bpb 0.924  (1.6M tokens, 2.3 min)
+step 101/400 loss 5.343 ema 6.382 lr 4.78e-04 gn 1.35 11722 tok/s  2.4 min  mem 6.1 GB
+step 151/400 loss 5.105 ema 5.555 lr 4.15e-04 gn 1.31 12176 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.689  en bpb 0.963  (3.3M tokens, 4.5 min)
+step 201/400 loss 4.667 ema 5.090 lr 3.25e-04 gn 1.25 12057 tok/s  4.6 min  mem 6.1 GB
+step 251/400 loss 4.525 ema 4.811 lr 2.25e-04 gn 0.99 12272 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.653  en bpb 0.973  (4.9M tokens, 6.7 min)
+step 301/400 loss 4.353 ema 4.637 lr 1.35e-04 gn 0.81 12145 tok/s  6.8 min  mem 6.1 GB
+step 351/400 loss 4.524 ema 4.529 lr 7.23e-05 gn 0.82 12281 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.639  en bpb 0.973  (6.6M tokens, 9.0 min)
+== abl-replay30 Tue Sep 15 10:28:22 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/400 loss 8.462 ema 8.462 lr 1.00e-05 gn 16.76 1718 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 5.615 ema 6.742 lr 5.00e-04 gn 1.11 11759 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.796  en bpb 0.909  (1.6M tokens, 2.3 min)
+step 101/400 loss 3.733 ema 5.501 lr 4.78e-04 gn 0.96 11745 tok/s  2.3 min  mem 6.1 GB
+step 151/400 loss 4.467 ema 4.917 lr 4.15e-04 gn 0.94 12191 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.717  en bpb 0.915  (3.3M tokens, 4.5 min)
+step 201/400 loss 3.838 ema 4.576 lr 3.25e-04 gn 0.81 12032 tok/s  4.6 min  mem 6.1 GB
+step 251/400 loss 4.046 ema 4.386 lr 2.25e-04 gn 0.87 12243 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.685  en bpb 0.911  (4.9M tokens, 6.7 min)
+step 301/400 loss 4.614 ema 4.258 lr 1.35e-04 gn 1.00 12151 tok/s  6.8 min  mem 6.1 GB
+step 351/400 loss 3.698 ema 4.210 lr 7.23e-05 gn 0.68 12290 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.671  en bpb 0.906  (6.6M tokens, 8.9 min)
+== abl-lr2e-4 Tue Sep 15 10:37:30 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/400 loss 8.784 ema 8.784 lr 4.00e-06 gn 17.28 1764 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 6.065 ema 7.681 lr 2.00e-04 gn 1.33 11776 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.839  en bpb 0.879  (1.6M tokens, 2.3 min)
+step 101/400 loss 5.044 ema 6.376 lr 1.91e-04 gn 1.26 11730 tok/s  2.4 min  mem 6.1 GB
+step 151/400 loss 5.085 ema 5.667 lr 1.66e-04 gn 1.05 12180 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.763  en bpb 0.884  (3.3M tokens, 4.5 min)
+step 201/400 loss 4.492 ema 5.257 lr 1.30e-04 gn 1.49 12067 tok/s  4.5 min  mem 6.1 GB
+step 251/400 loss 4.782 ema 5.038 lr 9.00e-05 gn 1.13 12282 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.733  en bpb 0.884  (4.9M tokens, 6.7 min)
+step 301/400 loss 5.021 ema 4.883 lr 5.39e-05 gn 1.20 12178 tok/s  6.7 min  mem 6.1 GB
+step 351/400 loss 4.917 ema 4.802 lr 2.89e-05 gn 0.97 12314 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.722  en bpb 0.882  (6.6M tokens, 8.9 min)
+== abl-lr1e-3 Tue Sep 15 10:46:35 IST 2026
+hindi 38.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.1 min)
+step 1/400 loss 8.784 ema 8.784 lr 2.00e-05 gn 17.29 1785 tok/s  0.2 min  mem 4.9 GB
+step 51/400 loss 5.528 ema 7.191 lr 1.00e-03 gn 1.46 11787 tok/s  1.2 min  mem 6.1 GB
+  eval step 100: hi bpb 0.741  en bpb 1.007  (1.6M tokens, 2.3 min)
+step 101/400 loss 4.713 ema 5.868 lr 9.55e-04 gn 0.94 11761 tok/s  2.3 min  mem 6.1 GB
+step 151/400 loss 4.863 ema 5.272 lr 8.31e-04 gn 3.92 12209 tok/s  3.4 min  mem 6.1 GB
+  eval step 200: hi bpb 0.673  en bpb 1.040  (3.3M tokens, 4.5 min)
+step 201/400 loss 4.177 ema 4.851 lr 6.50e-04 gn 0.79 12071 tok/s  4.5 min  mem 6.1 GB
+step 251/400 loss 4.410 ema 4.607 lr 4.50e-04 gn 2.41 12280 tok/s  5.6 min  mem 6.1 GB
+  eval step 300: hi bpb 0.630  en bpb 1.021  (4.9M tokens, 6.7 min)
+step 301/400 loss 4.390 ema 4.412 lr 2.69e-04 gn 0.75 12188 tok/s  6.7 min  mem 6.1 GB
+step 351/400 loss 4.353 ema 4.294 lr 1.45e-04 gn 0.67 12283 tok/s  7.8 min  mem 6.1 GB
+  eval step 400: hi bpb 0.613  en bpb 1.003  (6.6M tokens, 9.4 min)
+== abl-8k Tue Sep 15 10:56:08 IST 2026
+tokenized hi_train: 150M chars -> 41.9M tokens (3.58 chars/token) in 35s
+tokenized en_train: 60M chars -> 13.3M tokens (4.50 chars/token) in 10s
+hindi 41.9M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 8000 of 8000 new tokens average more than one stock token
+added 8000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.457  en bpb 0.859  (0.0M tokens, 0.4 min)
+step 1/400 loss 8.539 ema 8.539 lr 1.00e-05 gn 15.61 586 tok/s  0.5 min  mem 4.8 GB
+step 51/400 loss 5.657 ema 7.082 lr 5.00e-04 gn 1.44 9118 tok/s  1.5 min  mem 6.0 GB
+  eval step 100: hi bpb 0.795  en bpb 0.920  (1.6M tokens, 2.6 min)
+step 101/400 loss 4.709 ema 5.800 lr 4.78e-04 gn 1.02 10354 tok/s  2.7 min  mem 6.0 GB
+step 151/400 loss 4.424 ema 5.095 lr 4.15e-04 gn 1.08 11109 tok/s  3.7 min  mem 6.0 GB
+  eval step 200: hi bpb 0.708  en bpb 0.939  (3.3M tokens, 5.3 min)
+step 201/400 loss 4.164 ema 4.669 lr 3.25e-04 gn 0.98 10333 tok/s  5.3 min  mem 6.0 GB
+step 251/400 loss 4.139 ema 4.437 lr 2.25e-04 gn 0.82 10846 tok/s  6.3 min  mem 6.0 GB
+  eval step 300: hi bpb 0.670  en bpb 0.934  (4.9M tokens, 7.4 min)
+step 301/400 loss 4.311 ema 4.268 lr 1.35e-04 gn 0.84 11020 tok/s  7.5 min  mem 6.0 GB
+step 351/400 loss 4.108 ema 4.188 lr 7.23e-05 gn 0.85 11336 tok/s  8.5 min  mem 6.0 GB
+  eval step 400: hi bpb 0.656  en bpb 0.929  (6.6M tokens, 9.6 min)
+== abl-32k Tue Sep 15 11:06:40 IST 2026
+tokenized hi_train: 150M chars -> 37.2M tokens (4.03 chars/token) in 16s
+tokenized en_train: 60M chars -> 13.3M tokens (4.50 chars/token) in 5s
+hindi 37.2M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 29369 of 29369 new tokens average more than one stock token
+added 29369 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.444  en bpb 0.859  (0.0M tokens, 0.2 min)
+step 1/400 loss 9.334 ema 9.334 lr 1.00e-05 gn 14.90 1490 tok/s  0.2 min  mem 5.1 GB
+step 51/400 loss 5.890 ema 7.672 lr 5.00e-04 gn 1.62 9694 tok/s  1.4 min  mem 6.3 GB
+  eval step 100: hi bpb 0.773  en bpb 0.921  (1.6M tokens, 2.8 min)
+step 101/400 loss 5.081 ema 6.266 lr 4.78e-04 gn 1.20 9660 tok/s  2.9 min  mem 6.3 GB
+step 151/400 loss 4.636 ema 5.493 lr 4.15e-04 gn 1.22 10021 tok/s  4.1 min  mem 6.3 GB
+  eval step 200: hi bpb 0.692  en bpb 0.942  (3.3M tokens, 5.5 min)
+step 201/400 loss 4.352 ema 5.061 lr 3.25e-04 gn 1.03 9930 tok/s  5.5 min  mem 6.3 GB
+step 251/400 loss 4.445 ema 4.816 lr 2.25e-04 gn 1.12 10090 tok/s  6.8 min  mem 6.3 GB
+  eval step 300: hi bpb 0.658  en bpb 0.936  (4.9M tokens, 8.2 min)
+step 301/400 loss 4.732 ema 4.673 lr 1.35e-04 gn 1.30 9981 tok/s  8.2 min  mem 6.3 GB
+step 351/400 loss 4.566 ema 4.583 lr 7.23e-05 gn 1.65 10093 tok/s  9.5 min  mem 6.3 GB
+  eval step 400: hi bpb 0.645  en bpb 0.930  (6.6M tokens, 11.2 min)
+== run1200 Tue Sep 15 11:18:23 IST 2026
+tokenized hi_train: 400M chars -> 103.7M tokens (3.86 chars/token) in 95s
+hindi 103.7M tokens, english 13.3M tokens; tokens per step 16384
+mean init: 16000 of 16000 new tokens average more than one stock token
+added 16000 embedding rows, init=mean, tied=True
+  eval step 0: hi bpb 1.433  en bpb 0.859  (0.0M tokens, 0.4 min)
+step 1/1200 loss 9.091 ema 9.091 lr 5.00e-06 gn 14.73 674 tok/s  0.4 min  mem 4.9 GB
+step 51/1200 loss 6.069 ema 7.669 lr 2.55e-04 gn 1.36 9116 tok/s  1.5 min  mem 6.1 GB
+  eval step 100: hi bpb 0.808  en bpb 0.897  (1.6M tokens, 3.1 min)
+step 101/1200 loss 5.069 ema 6.302 lr 5.00e-04 gn 1.06 8958 tok/s  3.1 min  mem 6.1 GB
+step 151/1200 loss 4.669 ema 5.502 lr 4.98e-04 gn 2.28 9833 tok/s  4.2 min  mem 6.1 GB
+  eval step 200: hi bpb 0.704  en bpb 0.942  (3.3M tokens, 5.7 min)
+step 201/1200 loss 4.376 ema 5.008 lr 4.91e-04 gn 1.02 9623 tok/s  5.7 min  mem 6.1 GB
+step 251/1200 loss 4.582 ema 4.732 lr 4.80e-04 gn 1.10 10048 tok/s  6.8 min  mem 6.1 GB
+  eval step 300: hi bpb 0.656  en bpb 0.961  (4.9M tokens, 8.3 min)
+step 301/1200 loss 4.687 ema 4.554 lr 4.64e-04 gn 1.03 9846 tok/s  8.3 min  mem 6.1 GB
+step 351/1200 loss 4.444 ema 4.425 lr 4.45e-04 gn 1.14 10121 tok/s  9.5 min  mem 6.1 GB
+  eval step 400: hi bpb 0.632  en bpb 0.973  (6.6M tokens, 11.0 min)
+step 401/1200 loss 4.273 ema 4.350 lr 4.22e-04 gn 0.84 9948 tok/s  11.0 min  mem 6.1 GB
+step 451/1200 loss 4.199 ema 4.254 lr 3.97e-04 gn 0.78 10153 tok/s  12.1 min  mem 6.1 GB
+  eval step 500: hi bpb 0.607  en bpb 0.978  (8.2M tokens, 13.6 min)
+step 501/1200 loss 4.041 ema 4.209 lr 3.68e-04 gn 0.85 10017 tok/s  13.7 min  mem 6.1 GB
+step 551/1200 loss 3.969 ema 4.144 lr 3.38e-04 gn 0.83 10178 tok/s  14.8 min  mem 6.1 GB
+  eval step 600: hi bpb 0.592  en bpb 0.985  (9.8M tokens, 16.1 min)
+step 601/1200 loss 4.062 ema 4.098 lr 3.07e-04 gn 0.86 10185 tok/s  16.1 min  mem 6.1 GB
+step 651/1200 loss 4.003 ema 4.055 lr 2.75e-04 gn 0.82 10373 tok/s  17.1 min  mem 6.1 GB
+  eval step 700: hi bpb 0.580  en bpb 0.988  (11.5M tokens, 18.3 min)
+step 701/1200 loss 3.988 ema 4.012 lr 2.43e-04 gn 0.85 10441 tok/s  18.3 min  mem 6.1 GB
+step 751/1200 loss 3.960 ema 3.979 lr 2.12e-04 gn 0.93 10590 tok/s  19.4 min  mem 6.1 GB
+  eval step 800: hi bpb 0.571  en bpb 0.988  (13.1M tokens, 20.5 min)
+step 801/1200 loss 3.827 ema 3.957 lr 1.82e-04 gn 0.75 10651 tok/s  20.5 min  mem 6.1 GB
+step 851/1200 loss 3.836 ema 3.942 lr 1.53e-04 gn 0.70 10735 tok/s  21.6 min  mem 6.1 GB
+  eval step 900: hi bpb 0.564  en bpb 0.986  (14.7M tokens, 22.8 min)
+step 901/1200 loss 3.728 ema 3.904 lr 1.28e-04 gn 0.71 10784 tok/s  22.8 min  mem 6.1 GB
+step 951/1200 loss 3.856 ema 3.900 lr 1.05e-04 gn 0.71 10890 tok/s  23.8 min  mem 6.1 GB
+  eval step 1000: hi bpb 0.559  en bpb 0.984  (16.4M tokens, 25.0 min)
+step 1001/1200 loss 4.111 ema 3.890 lr 8.57e-05 gn 0.70 10914 tok/s  25.0 min  mem 6.1 GB
+step 1051/1200 loss 4.021 ema 3.865 lr 7.03e-05 gn 0.73 11006 tok/s  26.1 min  mem 6.1 GB
+  eval step 1100: hi bpb 0.556  en bpb 0.983  (18.0M tokens, 27.3 min)
+step 1101/1200 loss 3.921 ema 3.875 lr 5.91e-05 gn 0.73 11023 tok/s  27.3 min  mem 6.1 GB
+step 1151/1200 loss 3.885 ema 3.845 lr 5.23e-05 gn 0.69 11091 tok/s  28.3 min  mem 6.1 GB
+  eval step 1200: hi bpb 0.553  en bpb 0.982  (19.7M tokens, 29.5 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.49it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  5.49it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\run1200
+== baselines Tue Sep 15 11:49:44 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+Qwen2.5-1.5B                    1544M  hi bpb 0.660 (bpc 1.662, 460452 tok)  en bpb 0.734 (bpc 0.738)  91s
+Qwen3-0.6B                       596M  hi bpb 0.752 (bpc 1.894, 460452 tok)  en bpb 0.961 (bpc 0.966)  149s
+Qwen3-1.7B                      1721M  hi bpb 0.638 (bpc 1.608, 460452 tok)  en bpb 0.901 (bpc 0.906)  106s
+sarvam-1                        2525M  hi bpb 0.407 (bpc 1.027, 143920 tok)  en bpb 0.737 (bpc 0.741)  74s
+SmolLM2-135M-Instruct            135M  hi bpb 1.058 (bpc 2.666, 543663 tok)  en bpb 0.928 (bpc 0.933)  31s
+== STAGE1-DONE Tue Sep 15 11:57:33 IST 2026

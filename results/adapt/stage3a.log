@@ -1,0 +1,26 @@
+== samples Tue Sep 15 13:23:04 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+SmolLM2-135M capital '।\n\nप्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्र'
+SmolLM2-135M tea '।\n\nप्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्राप्त प्र'
+SmolLM2-135M review '२०१०००००००००००००००००००००००००००००००००००००'
+  return self._apply(lambda t: t.cuda(device))
+main capital '1991 में भारत ने चीन को 1991 में भारत के साथ 1991 में भारत के साथ 1991 में भारत के साथ 1991 में भारत के साथ 1991 में भार'
+main tea '1. 1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20. 21. 22'
+main review '100000 से ज्यादा कैमरे की बैटरी 10 घंटे में खत्म हो जाती है।\n- 100000 से ज्यादा कैमरे की बैटरी 10 घंटे में खत्म हो जाती '
+== wikipedia bpb Tue Sep 15 13:23:31 IST 2026
+  File "C:\PK\Github-Projects\ggml-inference-lab\scripts\adapt\eval_ood.py", line 20
+    row = {'model': path, 'tag': args.tag or os.path.basename(path.rstrip('/\')), 'params': sum(p.numel() for p in model.parameters()),
+                                                                                         ^
+SyntaxError: unterminated string literal (detected at line 20)
+ERROR conda.cli.main_run:execute(142): `conda run python scripts/adapt/eval_ood.py HuggingFaceTB/SmolLM2-135M HuggingFaceTB/SmolLM2-360M HuggingFaceTB/SmolLM2-1.7B Qwen/Qwen2.5-0.5B Qwen/Qwen2.5-1.5B Qwen/Qwen3-0.6B Qwen/Qwen3-1.7B sarvamai/sarvam-1` failed. (See above for error)
+  File "C:\PK\Github-Projects\ggml-inference-lab\scripts\adapt\eval_ood.py", line 20
+    row = {'model': path, 'tag': args.tag or os.path.basename(path.rstrip('/\')), 'params': sum(p.numel() for p in model.parameters()),
+                                                                                         ^
+SyntaxError: unterminated string literal (detected at line 20)
+ERROR conda.cli.main_run:execute(142): `conda run python scripts/adapt/eval_ood.py models/adapt/run1200 --tag run1200` failed. (See above for error)
+  File "C:\PK\Github-Projects\ggml-inference-lab\scripts\adapt\eval_ood.py", line 20
+    row = {'model': path, 'tag': args.tag or os.path.basename(path.rstrip('/\')), 'params': sum(p.numel() for p in model.parameters()),
+                                                                                         ^
+SyntaxError: unterminated string literal (detected at line 20)
+ERROR conda.cli.main_run:execute(142): `conda run python scripts/adapt/eval_ood.py models/adapt/main --tag cpt-main` failed. (See above for error)
+== STAGE3A-DONE Tue Sep 15 13:23:34 IST 2026

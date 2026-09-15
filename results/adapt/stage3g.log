@@ -1,0 +1,9 @@
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2-t07                      144M  hi bpb 0.600 (bpc 1.513, 131368 tok)  en bpb 1.282 (bpc 1.289)  26s
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2-t07                  wiki bpb 0.711 (bpc 1.782, 171128 tok)  15s
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2-t07 capital 'भारत की राजधानी नई दिल्ली है।'
+grpo-v2-t07 tea '1. **चाय बनाने के लिए सामग्री:** चाय का एक महत्वपूर्ण हिस्सा यह है कि आप इसे अच्छी तरह से तैयार करें। चाय के लिए आवश्यक '
+grpo-v2-t07 review '{"label": "negative"}'
+== STAGE3G-DONE Tue Sep 15 18:25:24 IST 2026

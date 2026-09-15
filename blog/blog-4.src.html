@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teaching a language model a language it never knew: continued pretraining, supervised fine-tuning and reinforcement learning on one laptop | Praveen Kumar</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Taking an English-only 135M model (SmolLM2) to Hindi on one 8 GB laptop GPU: extending the tokenizer without touching English, initialising the new embeddings, continued pretraining with replay, a short supervised warm-up, then GRPO with rewards a script can check. Every number measured, every step in the repo, with the pipeline the large labs use set beside it.">
+    <meta name="keywords" content="Language Adaptation, Continued Pretraining, Vocabulary Extension, Tokenizer, Hindi, SmolLM2, GRPO, Reinforcement Learning, RLVR, SFT, Post-training, Small Language Models, PyTorch, Transformers, Consumer GPU">
+    <meta name="author" content="Praveen Kumar">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Teaching a language model a language it never knew: continued pretraining, supervised fine-tuning and reinforcement learning on one laptop">
+    <meta property="og:description" content="An English-only 135M model taught Hindi end to end on one 8 GB laptop GPU: tokenizer extension, continued pretraining, supervised fine-tuning and GRPO with verifiable rewards. From one word repeated to a model that ties a 1.7B on a Hindi task, every number measured.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://inboxpraveen.github.io/blogs/blog-4.html">
+    <meta property="og:image" content="https://inboxpraveen.github.io/blogs/resources/blog-4/Header.png">
+    <meta property="og:image:alt" content="Tokens per Hindi word before and after extending the tokenizer, and Hindi bits per character falling through continued pretraining">
+    <meta property="og:site_name" content="Praveen Kumar Portfolio">
+    <meta property="article:published_time" content="2026-09-15">
+    <meta property="article:author" content="Praveen Kumar">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Teaching a language model a language it never knew: continued pretraining, supervised fine-tuning and reinforcement learning on one laptop">
+    <meta name="twitter:description" content="The whole training pipeline, pretraining through RL, run on one 8 GB laptop to teach a 135M model Hindi. From noise to a model that ties a 1.7B on a Hindi task. Every number measured.">
+    <meta name="twitter:image" content="https://inboxpraveen.github.io/blogs/resources/blog-4/Header.png">
+    <meta name="twitter:image:alt" content="Tokens per Hindi word before and after extending the tokenizer, and Hindi bits per character falling through continued pretraining">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://inboxpraveen.github.io/blogs/blog-4.html">
+
+    <link rel="icon" type="image/x-icon" href="../assests/favicon.ico">
+    <link rel="stylesheet" href="../index.css">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": "Teaching a language model a language it never knew: continued pretraining, supervised fine-tuning and reinforcement learning on one laptop",
+      "description": "Adapting SmolLM2-135M to Hindi on one consumer GPU: vocabulary extension, embedding initialisation, continued pretraining with English replay, supervised fine-tuning and GRPO with verifiable rewards, with the large-lab pipeline set beside it.",
+      "datePublished": "2026-09-15",
+      "dateModified": "2026-09-15",
+      "author": { "@type": "Person", "name": "Praveen Kumar", "url": "https://inboxpraveen.github.io/" },
+      "image": "https://inboxpraveen.github.io/blogs/resources/blog-4/Header.png",
+      "url": "https://inboxpraveen.github.io/blogs/blog-4.html",
+      "keywords": ["language adaptation", "continued pretraining", "vocabulary extension", "tokenizer", "Hindi", "SmolLM2", "GRPO", "reinforcement learning", "post-training", "small language models"]
+    }
+    </script>
+</head>
+<body>
+
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" data-progress></div></div>
+
+    <!-- Navigation -->
+    <nav class="site-nav">
+        <div class="nav-container">
+            <a href="../index.html" class="logo" aria-label="Praveen Kumar, home">PK</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../all-projects.html">Projects</a></li>
+                <li><a href="../all-blogs.html" aria-current="page">Blogs</a></li>
+                <li><a href="../about.html">About</a></li>
+                <li><a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            </ul>
+            <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks">
+                <span class="bars"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Blog post 4 -->
+    <main id="main" class="page-container active">
+        <div class="page-header">
+            <div class="container">
+                <a href="../all-blogs.html" class="back-button">&larr; Back to Blog</a>
+                <h1 class="page-title">Teaching a language model a language it never knew: continued pretraining, supervised fine-tuning and reinforcement learning on one laptop</h1>
+                <div class="page-meta">
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>
+                        <span>Published: 15 September 2026</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg></span>
+                        <span data-read-time>{{READ_TIME}} min read</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+                        <span>{{SOURCE_COUNT}} sources &bull; every run in the repo</span>
+                    </div>
+                    <div class="meta-item">
+                        <span><svg class="icon" aria-hidden="true"><use href="#i-tag"></use></svg></span>
+                        <span>Training &bull; Post-training &bull; Reinforcement learning &bull; Hindi &bull; PyTorch</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="toc" data-toc aria-label="On this page">
+            <p class="toc-label">On this page</p>
+        </nav>
+
+        <div class="content-section">
+{{BODY}}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <p class="footer-note">
+                    &copy; <span data-year>2026</span> Praveen Kumar &middot;
+                    Static HTML, one stylesheet, no build step &mdash;
+                    <a href="https://github.com/inboxpraveen/inboxpraveen.github.io" target="_blank" rel="noopener noreferrer">source on GitHub</a>
+                </p>
+                <div class="footer-social">
+                    <a href="https://github.com/inboxpraveen" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                        <svg class="icon" aria-hidden="true"><use href="#i-github"></use></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/in/praveen-kumar-inbox/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <svg class="icon" aria-hidden="true"><use href="#i-linkedin"></use></svg>
+                    </a>
+                    <a href="https://x.com/InboxPraveen" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+                    </a>
+                    <a href="mailto:inboxpraveen.17@gmail.com" aria-label="Email">
+                        <svg class="icon" aria-hidden="true"><use href="#i-mail"></use></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <button class="back-to-top" type="button" data-back-to-top aria-label="Back to top">
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-up"></use></svg>
+    </button>
+
+    <script src="../site.js" defer></script>
+
+</body>
+</html>

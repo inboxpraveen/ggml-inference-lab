@@ -1,0 +1,108 @@
+            <h2>Where it lands</h2>
+            <p>
+                The claim I set out to test was that a small model, taken through this pipeline on a small
+                amount of data, can beat much larger stock models. Here is the measurement, on the held-out
+                reviews and prompts, with the stock instruct models run through their own chat templates and
+                the same instruction. The Qwen3 model was run with its thinking mode off. The blue rows are
+                the four checkpoints from the last two sections; the one in bold is the one I'd ship.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/task.svg" alt="Horizontal bars for ten models: Hindi sentiment accuracy and valid-JSON share on 598 held-out reviews, and the repaired language reward on 100 held-out prompts. This post's 135M after SFT and after three GRPO runs in blue against stock SmolLM2 and Qwen instruct models from 135M to 1.7B." loading="lazy" decoding="async">
+                <figcaption>Left: accuracy (right label, in valid JSON) and the share of answers that were valid JSON at all, on {{N_SENT_TEST}} held-out reviews. Right: the repaired language reward on 100 held-out open prompts, greedy decoding. Blue is this post's model; amber is stock.</figcaption>
+            </figure>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Parameters</th>
+                            <th>Sentiment accuracy</th>
+                            <th>Valid JSON</th>
+                            <th>Accuracy when valid</th>
+                            <th>Language reward (repaired)</th>
+                            <th>Answers that loop</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>SmolLM2-135M-Instruct (stock)</td><td>{{TASK_INSTRUCT_PARAMS_M}}M</td><td>{{TASK_INSTRUCT_ACC}}</td><td>{{TASK_INSTRUCT_FMT}}</td><td>{{TASK_INSTRUCT_ACCFMT}}</td><td>{{TASK_INSTRUCT_LANGV2}}</td><td>{{TASK_INSTRUCT_LOOP_PCT}}%</td></tr>
+                        <tr><td>SmolLM2-360M-Instruct (stock)</td><td>{{TASK_360M_PARAMS_M}}M</td><td>{{TASK_360M_ACC}}</td><td>{{TASK_360M_FMT}}</td><td>{{TASK_360M_ACCFMT}}</td><td>{{TASK_360M_LANGV2}}</td><td>{{TASK_360M_LOOP_PCT}}%</td></tr>
+                        <tr><td>SmolLM2-1.7B-Instruct (stock)</td><td>{{TASK_17B_PARAMS_M}}M</td><td>{{TASK_17B_ACC}}</td><td>{{TASK_17B_FMT}}</td><td>{{TASK_17B_ACCFMT}}</td><td>{{TASK_17B_LANGV2}}</td><td>{{TASK_17B_LOOP_PCT}}%</td></tr>
+                        <tr><td>Qwen2.5-0.5B-Instruct (stock)</td><td>{{TASK_QWEN05_PARAMS_M}}M</td><td>{{TASK_QWEN05_ACC}}</td><td>{{TASK_QWEN05_FMT}}</td><td>{{TASK_QWEN05_ACCFMT}}</td><td>{{TASK_QWEN05_LANGV2}}</td><td>{{TASK_QWEN05_LOOP_PCT}}%</td></tr>
+                        <tr><td>Qwen2.5-1.5B-Instruct (stock)</td><td>{{TASK_QWEN15_PARAMS_M}}M</td><td>{{TASK_QWEN15_ACC}}</td><td>{{TASK_QWEN15_FMT}}</td><td>{{TASK_QWEN15_ACCFMT}}</td><td>{{TASK_QWEN15_LANGV2}}</td><td>{{TASK_QWEN15_LOOP_PCT}}%</td></tr>
+                        <tr><td>Qwen3-1.7B (stock, thinking off)</td><td>{{TASK_QWEN3_17_PARAMS_M}}M</td><td>{{TASK_QWEN3_17_ACC}}</td><td>{{TASK_QWEN3_17_FMT}}</td><td>{{TASK_QWEN3_17_ACCFMT}}</td><td>{{TASK_QWEN3_17_LANGV2}}</td><td>{{TASK_QWEN3_17_LOOP_PCT}}%</td></tr>
+                        <tr><td>This post, after CPT and SFT</td><td>{{TASK_SFT_PARAMS_M}}M</td><td>{{TASK_SFT_ACC}}</td><td>{{TASK_SFT_FMT}}</td><td>{{TASK_SFT_ACCFMT}}</td><td>{{TASK_SFT_LANGV2}}</td><td>{{TASK_SFT_LOOP_PCT}}%</td></tr>
+                        <tr><td>This post, after GRPO with the first reward</td><td>{{TASK_GRPO_PARAMS_M}}M</td><td>{{TASK_GRPO_ACC}}</td><td>{{TASK_GRPO_FMT}}</td><td>{{TASK_GRPO_ACCFMT}}</td><td>{{TASK_GRPO_LANGV2}}</td><td>{{TASK_GRPO_LOOP_PCT}}%</td></tr>
+                        <tr><td>This post, after GRPO with the repaired reward</td><td>{{TASK_GRPOV2_PARAMS_M}}M</td><td>{{TASK_GRPOV2_ACC}}</td><td>{{TASK_GRPOV2_FMT}}</td><td>{{TASK_GRPOV2_ACCFMT}}</td><td>{{TASK_GRPOV2_LANGV2}}</td><td>{{TASK_GRPOV2_LOOP_PCT}}%</td></tr>
+                        <tr><td><strong>This post, repaired reward, sampled at 0.7</strong></td><td>{{TASK_GRPOV2T07_PARAMS_M}}M</td><td><strong>{{TASK_GRPOV2T07_ACC}}</strong></td><td>{{TASK_GRPOV2T07_FMT}}</td><td>{{TASK_GRPOV2T07_ACCFMT}}</td><td>{{TASK_GRPOV2T07_LANGV2}}</td><td>{{TASK_GRPOV2T07_LOOP_PCT}}%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                On the task, the 135M after the full pipeline scores {{TASK_GRPOV2T07_ACC}} on the
+                {{N_SENT_TEST}} held-out reviews, with all but one answer in the format asked for. That is ahead
+                of Qwen2.5-1.5B-Instruct ({{TASK_QWEN15_ACC}}, eleven times the parameters) and of every
+                SmolLM2 instruct model, including the 1.7B, which almost never produces the JSON at all
+                ({{TASK_17B_FMT}} valid; the "accuracy when valid" column rests on the one time it did). And it is level with Qwen3-1.7B ({{TASK_QWEN3_17_ACC}}; the gap is inside the noise of
+                {{N_SENT_TEST}} reviews), a newer model trained on far more multilingual text, which follows
+                the format without being taught it. So the sentence from the introduction holds with its
+                qualifier attached: on a task the pipeline was pointed at, a 135M model beats most of the
+                stock models ten times its size and ties the best of them.
+            </p>
+            <p>
+                Read the language column with its caveat. The reward is a floor check, not a quality score:
+                it asks whether the answer is in Devanagari, of a sensible length, and not looping. The stock
+                models clear it by answering briefly (sixteen to thirty-three words, often restating the
+                question) and almost never looping; this post's model answers at length, in Hindi, and loops
+                in nearly half of its greedy answers even after the last run, which the previous section
+                is mostly about. A
+                repetition penalty at inference time would hide the problem; I haven't applied one, because
+                the point of the column is to show what the model does on its own.
+            </p>
+
+            <h3>The same prompts, six checkpoints</h3>
+            <p>
+                Numbers first, but the answers are what you'd actually see. Three fixed prompts, greedy
+                decoding, the first 150 characters of each answer, at each stage of the pipeline. The first two are chat prompts; the
+                third is a negative phone review under the sentiment instruction.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Checkpoint</th>
+                            <th>"What is the capital of India?"</th>
+                            <th>"Give three steps to make tea."</th>
+                            <th>Review: battery dies in two hours, camera blurry</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{SAMPLE_ROWS}}
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>What it cost</h3>
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>GPU minutes</th>
+                            <th>Tokens or samples</th>
+                            <th>What it moved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Tokenizer extension</td><td>0 (CPU, about 2)</td><td>150M characters read</td><td>Hindi tokens per word {{TPW_STOCK_HI}} to {{TPW_16K_HI}}</td></tr>
+                        <tr><td>Continued pretraining (main run)</td><td>{{RUN_MAIN_MIN}}</td><td>{{RUN_MAIN_TOKENS_M}}M tokens</td><td>Hindi {{BPC_STOCK_HI}} to {{RUN_MAIN_BPC_HI}} bits per character; English {{BPC_STOCK_EN}} to {{RUN_MAIN_BPC_EN}}</td></tr>
+                        <tr><td>Supervised fine-tuning (the run used)</td><td>{{SFT_MIN}}</td><td>{{SFT_N_TRAIN}} pairs plus {{SFT_COLD_START}} labelled reviews, {{SFT_EPOCHS}} epochs</td><td>Answers in format; held-out answer loss {{SFT_LOSS0}} to {{SFT_LOSS}}; valid JSON 0% to 100%</td></tr>
+                        <tr><td>GRPO (the run kept: repaired reward, sampling at 0.7)</td><td>{{GRPO_V2_T07_MIN}}</td><td>{{GRPO_V2_T07_SAMPLES_TOTAL}} sampled answers</td><td>Sentiment accuracy {{TASK_SFT_ACC}} to {{TASK_GRPOV2T07_ACC}}; greedy answers that loop {{TASK_SFT_LOOP_PCT}}% to {{TASK_GRPOV2T07_LOOP_PCT}}%</td></tr>
+                        <tr><td>All SFT and GRPO runs together</td><td>{{SFT_ALL_MIN}} and {{GRPO_ALL_MIN}}</td><td>three SFT runs, {{GRPO_RUNS}} GRPO runs</td><td>The cold-start and reward sections</td></tr>
+                        <tr><td>Ablations and evaluation</td><td>about 200</td><td>ten 400-step runs, one 1,200-step run, every model in the charts scored on two Hindi sets</td><td>The charts</td></tr>
+                    </tbody>
+                </table>
+            </div>

@@ -1,0 +1,26 @@
+== grpo from the plain sft Tue Sep 15 15:16:54 IST 2026
+  eval step 0: sentiment acc 0.000 format 0.000 | language reward 0.585 v2 0.441 devanagari 0.937 words 65  (1.0 min)
+step 1/150 reward 0.473 sent 0.0 fmt 0.0 open 0.9468530826699298 len 56 kl 0.0010 gn 1.24 1.0 min
+step 11/150 reward 0.246 sent 0.0 fmt 0.0 open 0.9838442627927444 len 59 kl 0.0012 gn 0.94 2.7 min
+step 21/150 reward 0.694 sent 0.0 fmt 0.0 open 0.9253385299676702 len 79 kl 0.0015 gn 1.16 5.6 min
+step 31/150 reward 0.644 sent 0.0 fmt 0.0 open 0.858931023971691 len 72 kl 0.0021 gn 1.47 8.2 min
+step 41/150 reward 0.217 sent 0.0 fmt 0.0 open 0.8668625494679829 len 41 kl 0.0038 gn 0.94 11.1 min
+  eval step 50: sentiment acc 0.000 format 0.000 | language reward 0.588 v2 0.439 devanagari 0.944 words 69  (16.9 min)
+step 51/150 reward 0.483 sent 0.0 fmt 0.0 open 0.9659369501777569 len 42 kl 0.0058 gn 2.04 17.4 min
+step 61/150 reward 0.249 sent 0.0 fmt 0.0 open 0.9943306260606719 len 66 kl 0.0077 gn 0.98 20.8 min
+step 71/150 reward 0.201 sent 0.0 fmt 0.0 open 0.8025170386859469 len 52 kl 0.0165 gn 0.65 24.2 min
+step 81/150 reward 0.241 sent 0.0 fmt 0.0 open 0.9634109404898329 len 47 kl 0.0220 gn 1.21 27.5 min
+step 91/150 reward 0.489 sent 0.0 fmt 0.0 open 0.9781942321776881 len 60 kl 0.0269 gn 1.12 30.8 min
+  eval step 100: sentiment acc 0.000 format 0.000 | language reward 0.557 v2 0.381 devanagari 0.963 words 80  (34.7 min)
+step 101/150 reward 0.000 sent 0.0 fmt 0.0 open None len 52 kl 0.0279 gn 0.00 35.0 min
+step 111/150 reward 0.000 sent 0.0 fmt 0.0 open None len 57 kl 0.0413 gn 0.00 38.3 min
+step 121/150 reward 0.238 sent 0.0 fmt 0.0 open 0.951138426524974 len 51 kl 0.0552 gn 0.40 41.7 min
+step 131/150 reward 0.000 sent 0.0 fmt 0.0 open None len 51 kl 0.0647 gn 0.00 44.8 min
+step 141/150 reward 0.000 sent 0.0 fmt 0.0 open None len 57 kl 0.0631 gn 0.00 48.0 min
+  eval step 150: sentiment acc 0.000 format 0.000 | language reward 0.510 v2 0.292 devanagari 0.974 words 89  (51.8 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  1.25it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  1.25it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\grpo-nocold
+== full task eval of the plain sft Tue Sep 15 16:08:55 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+sft-plain                       144M  sentiment acc 0.000 format 0.000 (acc|fmt 0.000)  language reward 0.588 devanagari 0.931 words 65 v2 0.424 looping 0.52 | sampled: reward 0.870 v2 0.802 looping 0.16  133s
+== STAGE3D-DONE Tue Sep 15 16:11:16 IST 2026

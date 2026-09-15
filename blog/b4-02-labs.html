@@ -1,0 +1,108 @@
+            <h2>How the large labs do it</h2>
+            <p>
+                Before the recipe, the map, because the words get used loosely and the order matters. What
+                follows is the pipeline as the labs themselves describe it in their papers, with the numbers
+                they published. I've kept to primary sources; where the only source is a press article or a
+                model card, the sources section says so.
+            </p>
+            <p>
+                <strong>Pretraining</strong> is next-token prediction on as much text as the budget allows.
+                SmolLM2-135M saw {{SRC_SMOLLM2_TOKENS_135M}} tokens on {{SRC_SMOLLM2_GPUS}}s. Llama 3 405B saw
+                {{SRC_LLAMA3_PRETRAIN_TOKENS_405B}} tokens on {{SRC_LLAMA3_H100_GPUS}} H100s, and its data
+                mix was {{SRC_LLAMA3_PRETRAIN_MIX}}, so even a frontier model gives a twelfth of its reading to
+                every language other than English put together. Nobody outside a lab repeats this stage. What
+                you can repeat is the next one.
+            </p>
+            <p>
+                <strong>Continued pretraining</strong> is the same objective, the same loop, started from the
+                pretrained weights and pointed at new text. When the new text is a language the model hasn't
+                seen, it's called language adaptation, and it usually comes with a change to the tokenizer.
+                Chinese-LLaMA added {{SRC_CHINESE_LLAMA_CHINESE_TOKENS_ADDED}} Chinese tokens to Llama's
+                32,000, which roughly halved the token count of a Chinese sentence, and continued on a
+                {{SRC_CHINESE_LLAMA_PRETRAIN_CORPUS_7B}}. Swallow added {{SRC_SWALLOW_SUBWORDS_ADDED}} Japanese
+                subwords to Llama 2 and continued for {{SRC_SWALLOW_CPT_TOKENS_TOTAL}} tokens at a
+                {{SRC_SWALLOW_JA_EN_RATIO_USED}} Japanese-to-English ratio, and reported that the vocabulary
+                expansion cut Japanese token counts by {{SRC_SWALLOW_JAPANESE_TOKEN_REDUCTION_PCT_INT}}% with no
+                effect on most benchmarks. Sarvam's OpenHathi did the same for Hindi on Llama 2 in
+                {{SRC_OPENHATHI_DATE}}. The other thing every one of these did is keep some of the original
+                language in the mix, because a model trained only on the new language forgets the old one;
+                the cleanest study of that, Ibrahim and colleagues in {{SRC_IBRAHIM_CPT_DATE}}, found that
+                replaying {{SRC_IBRAHIM_CPT_REPLAY_WEAK_SHIFT_PCT}}% of the old data is enough for a mild
+                distribution shift and {{SRC_IBRAHIM_CPT_REPLAY_STRONG_SHIFT_PCT}}% for a strong one, their
+                example of a strong one being {{SRC_IBRAHIM_CPT_STRONG_SHIFT_EXAMPLE}}, and that the learning
+                rate has to be warmed back up and decayed again rather than resumed where the original run
+                left it.
+            </p>
+            <p>
+                <strong>Supervised fine-tuning</strong> is where the text predictor becomes a thing that
+                answers. The model is shown prompts and good responses in a chat format and trained on the
+                responses only. InstructGPT, the paper behind the first ChatGPT, did this on
+                {{SRC_INSTRUCTGPT_SFT_PROMPTS}} prompts written and answered by
+                {{SRC_INSTRUCTGPT_CONTRACTORS_N}} contractors. It's smaller than people expect. Airavata, the
+                Hindi instruction model built on OpenHathi, used {{SRC_AIRAVATA_INDICINSTRUCT_EXAMPLES_FILTERED}}
+                mostly machine-translated examples, kept only when a back-translation scored well enough.
+            </p>
+            <p>
+                <strong>Reinforcement learning</strong> comes after that, and it comes in flavours that are
+                worth keeping apart because only one of them is available to a person with a laptop.
+                InstructGPT's version is RLHF: contractors compare pairs of model answers
+                ({{SRC_INSTRUCTGPT_RM_PROMPTS}} prompts' worth), a reward model is trained to predict their
+                preferences, and the policy is optimised against the reward model with PPO on another
+                {{SRC_INSTRUCTGPT_PPO_PROMPTS}} prompts. The human feedback is in the reward model, not in the
+                loop; the loop runs against a learned proxy. Anthropic's Constitutional AI replaced the human
+                comparisons for harmlessness with an AI judge applying {{SRC_CONSTITUTIONAL_AI_PRINCIPLES_COUNT}}
+                written principles, which is RLAIF. Llama 3 ran {{SRC_LLAMA3_POST_TRAINING_ROUNDS}} rounds of
+                collecting preferences, sampling from the latest model, fine-tuning on the best samples and
+                then DPO, the paper's reason being that {{SRC_LLAMA3_DPO_VS_PPO}}. Qwen2.5's recipe is SFT, then DPO,
+                then GRPO. All of these need either people or a strong judge model to produce the preference
+                data, and that is the part a solo developer doesn't have.
+            </p>
+            <p>
+                The flavour you do have is the one DeepSeek made famous. DeepSeekMath introduced GRPO in
+                {{SRC_DEEPSEEKMATH_DATE}}: sample a group of answers to each question
+                ({{SRC_DEEPSEEKMATH_GRPO_GROUP_SIZE}} in the paper), score them, and use the group's own mean
+                as the baseline instead of training a separate value model. DeepSeek-R1, a year later, showed
+                that a rule-based reward, a script that checks whether the final answer matches the reference
+                and whether the output has the right format, is enough to lift a base model on AIME 2024 from
+                {{SRC_DEEPSEEK_R1_AIME2024_PASS1_R1ZERO_START_V1}}% to {{SRC_DEEPSEEK_R1_AIME2024_PASS1_R1ZERO_END_V1}}%
+                pass@1 with no human preference data at all. Tülu 3 gave the idea its name, RLVR,
+                reinforcement learning with verifiable rewards. Two details from the R1 paper matter here.
+                First, the pure-RL model (R1-Zero) was hard to read, so the released model started with a
+                "cold start" supervised stage on {{SRC_DEEPSEEK_R1_COLD_START_EXAMPLES}}. Second,
+                R1-Zero kept mixing languages inside its reasoning, so they added a language-consistency
+                reward, the share of target-language words in the reasoning, and accepted a
+                {{SRC_DEEPSEEK_R1_LANGUAGE_CONSISTENCY_EFFECT}} for the readability. A model that has just
+                learned Hindi and is being asked to answer in it needs exactly that reward.
+            </p>
+            <p>
+                Which corrects the version of the pipeline I had in my head when I started, and probably the
+                version most people carry around. The order is pretraining, then continued pretraining if the
+                language or domain changes, then supervised fine-tuning, then RL; RL on a raw base model is
+                the exception R1-Zero proved possible, not the rule. "Human feedback" means preference
+                comparisons that train a reward model, which is a labelling operation, not something that
+                happens while you train. And the human-free version, verifiable rewards, is not a compromise
+                for people without annotators; it's the method the current reasoning models were built with.
+                The table is the whole map in one place.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>What it optimises</th>
+                            <th>At a lab (published)</th>
+                            <th>On this laptop (this post)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Pretraining</td><td>Next token on everything</td><td>SmolLM2-135M: {{SRC_SMOLLM2_TOKENS_135M}} tokens, {{SRC_SMOLLM2_GPUS}}s, English</td><td>Not repeated; the whole point is to keep it</td></tr>
+                        <tr><td>Tokenizer change</td><td>Tokens per word in the new language</td><td>Chinese-LLaMA +{{SRC_CHINESE_LLAMA_CHINESE_TOKENS_ADDED}}, Swallow +{{SRC_SWALLOW_SUBWORDS_ADDED}}, Llama 3 +28k for non-English</td><td>+{{NEW_TOKENS_16K}} Hindi tokens; English tokenization unchanged</td></tr>
+                        <tr><td>Continued pretraining</td><td>Next token on the new language, with replay</td><td>Swallow {{SRC_SWALLOW_CPT_TOKENS_TOTAL}} tokens at {{SRC_SWALLOW_JA_EN_RATIO_USED}}; Ibrahim et al. replay {{SRC_IBRAHIM_CPT_REPLAY_WEAK_SHIFT_PCT}} to {{SRC_IBRAHIM_CPT_REPLAY_STRONG_SHIFT_PCT}}%</td><td>{{RUN_MAIN_TOKENS_M}}M tokens at 90:10, {{RUN_MAIN_MIN}} minutes</td></tr>
+                        <tr><td>Supervised fine-tuning</td><td>Answers in a chat format</td><td>InstructGPT {{SRC_INSTRUCTGPT_SFT_PROMPTS}} prompts, {{SRC_INSTRUCTGPT_CONTRACTORS_N}} labelers; Airavata {{SRC_AIRAVATA_INDICINSTRUCT_EXAMPLES_FILTERED}} translated</td><td>{{SFT_N_TRAIN}} translated Hindi pairs, {{SFT_MIN}} minutes</td></tr>
+                        <tr><td>RL: preference-based (RLHF, RLAIF, DPO)</td><td>A learned reward model or a judge's preferences</td><td>InstructGPT {{SRC_INSTRUCTGPT_RM_PROMPTS}} comparisons; Llama 3 {{SRC_LLAMA3_POST_TRAINING_ROUNDS}} rounds of DPO; Constitutional AI</td><td>Not available; needs annotators or a strong judge</td></tr>
+                        <tr><td>RL: verifiable rewards (GRPO, RLVR)</td><td>A script's score on each sample</td><td>DeepSeek-R1: accuracy and format rewards; Tülu 3 on maths and instruction following</td><td>{{GRPO_V2_T07_STEPS}} GRPO steps, two rule-based rewards, {{GRPO_V2_T07_MIN}} minutes (the run kept)</td></tr>
+                        <tr><td>Task-specific fine-tuning</td><td>One job, one format</td><td>Usually a customer's problem, not the lab's</td><td>Next post</td></tr>
+                    </tbody>
+                </table>
+            </div>

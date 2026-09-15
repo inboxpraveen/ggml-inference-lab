@@ -1,0 +1,44 @@
+== sft with cold start Tue Sep 15 13:23:34 IST 2026
+12099 train, 500 test examples after length filter
+step 0: test loss 3.558 hi bpc 1.247 en bpc 1.090
+step 1/1512 loss 3.894 ema 3.894 lr 3.3e-06 0.2 min
+step 51/1512 loss 3.344 ema 3.395 lr 1.0e-04 0.5 min
+step 101/1512 loss 3.334 ema 3.220 lr 1.0e-04 0.9 min
+step 151/1512 loss 3.217 ema 3.157 lr 9.9e-05 1.4 min
+step 201/1512 loss 3.466 ema 3.147 lr 9.7e-05 1.9 min
+step 251/1512 loss 3.231 ema 3.138 lr 9.5e-05 2.5 min
+step 301/1512 loss 3.152 ema 3.057 lr 9.3e-05 3.1 min
+step 351/1512 loss 3.053 ema 3.083 lr 9.0e-05 3.7 min
+  eval step 378: test loss 3.014 hi bpc 1.385 en bpc 1.163
+step 401/1512 loss 3.267 ema 3.093 lr 8.7e-05 5.0 min
+step 451/1512 loss 3.101 ema 3.022 lr 8.3e-05 5.7 min
+step 501/1512 loss 3.206 ema 3.073 lr 7.9e-05 6.2 min
+step 551/1512 loss 3.090 ema 3.052 lr 7.5e-05 6.6 min
+step 601/1512 loss 2.977 ema 2.971 lr 7.1e-05 7.1 min
+step 651/1512 loss 3.241 ema 3.022 lr 6.6e-05 7.5 min
+step 701/1512 loss 2.646 ema 2.961 lr 6.2e-05 7.9 min
+step 751/1512 loss 3.335 ema 3.014 lr 5.7e-05 8.3 min
+  eval step 756: test loss 2.945 hi bpc 1.440 en bpc 1.214
+step 801/1512 loss 2.710 ema 2.725 lr 5.2e-05 9.0 min
+step 851/1512 loss 2.514 ema 2.671 lr 4.7e-05 9.4 min
+step 901/1512 loss 2.860 ema 2.750 lr 4.3e-05 10.0 min
+step 951/1512 loss 2.999 ema 2.758 lr 3.8e-05 10.5 min
+step 1001/1512 loss 2.796 ema 2.705 lr 3.4e-05 11.0 min
+step 1051/1512 loss 2.755 ema 2.715 lr 3.0e-05 11.5 min
+step 1101/1512 loss 3.056 ema 2.740 lr 2.6e-05 12.0 min
+  eval step 1134: test loss 2.932 hi bpc 1.472 en bpc 1.250
+step 1151/1512 loss 2.851 ema 2.712 lr 2.3e-05 13.1 min
+step 1201/1512 loss 2.590 ema 2.719 lr 1.9e-05 13.8 min
+step 1251/1512 loss 2.648 ema 2.697 lr 1.7e-05 14.4 min
+step 1301/1512 loss 2.769 ema 2.753 lr 1.4e-05 15.0 min
+step 1351/1512 loss 2.523 ema 2.692 lr 1.3e-05 15.6 min
+step 1401/1512 loss 2.729 ema 2.656 lr 1.1e-05 16.3 min
+step 1451/1512 loss 2.563 ema 2.721 lr 1.0e-05 16.8 min
+step 1501/1512 loss 2.973 ema 2.707 lr 1.0e-05 17.4 min
+  eval step 1512: test loss 2.922 hi bpc 1.482 en bpc 1.261
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.76s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.76s/it]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\sft-cold
+== task eval of sft-cold Tue Sep 15 13:41:58 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+sft-cold                        144M  sentiment acc 0.935 format 1.000 (acc|fmt 0.935)  language reward 0.585 devanagari 0.934 words 65  137s
+== STAGE3-DONE Tue Sep 15 13:44:23 IST 2026

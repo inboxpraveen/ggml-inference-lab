@@ -1,0 +1,75 @@
+            <h2>The plan for one GPU</h2>
+            <p>
+                Everything in the table above except pretraining and preference labelling fits on the
+                laptop, with one adjustment per stage. The adjustment is never "use a smaller model"; it's
+                always "use less data and fewer steps", because a 135M model is already small enough that
+                its weights, gradients and optimizer states take under three gigabytes in full precision.
+                What doesn't fit, as it turned out, is the activations, and the continued pretraining section
+                has the story of getting from a training loop that spilled into system memory at 250 tokens
+                a second to one that runs at {{RUN_MAIN_TOKS}} thousand.
+            </p>
+            <p>
+                The data is all public and all small. For Hindi text I streamed the first
+                {{N_HI_TRAIN_DOCS}} documents ({{HI_TRAIN_CHARS_M}} million characters) of FineWeb-2's
+                Hindi-in-Devanagari subset, which is the multilingual sibling of the data SmolLM2 was trained
+                on, deduplicated and language-filtered by the same team; the full subset has
+                {{SRC_FINEWEB2_HINDI_NUM_ROWS_TRAIN}} documents, so this post uses under one percent of it,
+                which is the "very small data" framing made concrete. FineWeb-2 also ships a separate test
+                split, and {{N_HI_TEST_DOCS}} documents from it are the held-out Hindi set that nothing in this
+                post trains on. For the English replay I took {{EN_TRAIN_CHARS_M}} million characters of
+                FineWeb-Edu, the largest component of SmolLM2's own mix, and {{N_EN_TRAIN_DOCS}} documents
+                further along the same stream as the held-out English set. For instructions, an existing
+                GPT-4-written Alpaca set translated to Hindi, filtered to pairs that are actually in Devanagari:
+                {{N_SFT_TRAIN}} for training and {{N_SFT_TEST}} held out. For the reward task,
+                IndicSentiment, a set of product reviews written in English by annotators and translated by
+                hand into Indic languages, with a positive or negative label on each: {{N_SENT_TRAIN}} reviews
+                for the RL prompts and {{N_SENT_TEST}} held out for the accuracy numbers.
+            </p>
+
+            <p>
+                Read the table as the labs' pipeline with the quantities changed. Row one is the baseline;
+                rows two to four are the "continued pretraining" box from the previous section; rows five
+                and six are post-training, first supervised, then reinforcement learning; the last row is
+                the held-out measurement that every section reports. The step headings below follow the
+                same order, so at any point in the post you can place yourself in the pipeline by the step
+                number.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>Script</th>
+                            <th>Input</th>
+                            <th>What it changes</th>
+                            <th>Minutes on the RTX 5060</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Measure the starting point</td><td><code>tok_stats.py</code>, <code>eval_bpb.py</code></td><td>held-out Hindi (web text and Wikipedia) and English text</td><td>nothing; tokens per word and bits per character for every model in the comparison</td><td>a few per model</td></tr>
+                        <tr><td>Extend the tokenizer</td><td><code>extend_tokenizer.py</code></td><td>150M characters of Hindi</td><td>+{{NEW_TOKENS_16K}} vocabulary entries and their merge rules; English untouched</td><td>2, on the CPU</td></tr>
+                        <tr><td>Initialise the new embeddings</td><td>inside <code>cpt.py</code></td><td>the stock embedding table</td><td>{{NEW_TOKENS_16K}} new rows, each the mean of the old tokens that used to spell it</td><td>under 1</td></tr>
+                        <tr><td>Continued pretraining</td><td><code>cpt.py</code></td><td>Hindi web text, 10% English replay</td><td>every weight, {{RUN_MAIN_TOKENS_M}}M tokens</td><td>{{RUN_MAIN_MIN}}</td></tr>
+                        <tr><td>Supervised fine-tuning</td><td><code>sft.py</code></td><td>{{SFT_N_TRAIN}} Hindi instruction pairs in ChatML, plus {{SFT_COLD_START}} labelled reviews in the answer format</td><td>every weight, loss on the answer tokens only</td><td>{{SFT_MIN}}</td></tr>
+                        <tr><td>GRPO</td><td><code>grpo.py</code></td><td>{{N_SENT_TRAIN}} labelled reviews, {{N_OPEN_PROMPTS}} open prompts, two reward functions</td><td>every weight, {{GRPO_V2_T07_STEPS}} steps of {{GRPO_V2_T07_PROMPTS}} prompts x {{GRPO_V2_T07_GROUP}} samples (the run kept; five runs in all)</td><td>{{GRPO_V2_T07_MIN}}</td></tr>
+                        <tr><td>Evaluate</td><td><code>eval_task.py</code></td><td>held-out reviews and prompts, this model and the stock instruct models</td><td>nothing</td><td>a few per model</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Two measurement decisions run through the whole post and are worth stating once. First, the
+                quality of the language model is reported in bits per character of held-out text, not
+                perplexity. Perplexity is per token, and the tokenizer changes halfway through this post; a
+                model that spends a quarter as many tokens on the same text would look four times worse per
+                token while being better per character. Bits per character is the total negative
+                log-likelihood of a document divided by its length, and it doesn't care how the text was cut
+                up. (Bits per byte is the more standard unit; for Hindi it's about forty percent of the
+                bits-per-character figure because Devanagari letters are three bytes each in UTF-8 while the
+                spaces and digits between them are one, and it makes Hindi look spuriously easier than
+                English. Both are in the results files.) Second, every task number is
+                on data the model never trained on, with the split written down in the data preparation
+                script, because the reinforcement learning stage in particular can memorise a few hundred
+                prompts in minutes and a number on the training prompts would mean nothing.
+            </p>

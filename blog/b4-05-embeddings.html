@@ -1,0 +1,54 @@
+            <h2>Step 2, embedding initialisation: {{NEW_TOKENS_16K}} new rows, and how to fill them</h2>
+            <p>
+                A token the model has never seen is a row of the embedding table, 576 numbers, and in
+                SmolLM2 the same table is used as the output layer (the weights are tied), so each new row is
+                also what the model compares its final hidden state against when it decides whether to emit
+                that token. Resize the table to {{VOCAB_AFTER_16K}} rows and the new ones have to contain
+                something. Three options, all cheap:
+            </p>
+            <ul>
+                <li><strong>Random.</strong> Normal noise at the scale of the existing rows. The model starts out unable to read or write any Hindi token and has to learn all of it from the gradient.</li>
+                <li><strong>The library default.</strong> transformers' <code>resize_token_embeddings</code> fills new rows with samples from a Gaussian fitted to the old rows' mean and covariance. The new rows look statistically like tokens but mean nothing in particular.</li>
+                <li><strong>The mean of what the token used to be.</strong> Every new Hindi token was, under the stock tokenizer, a sequence of byte-fragment tokens the model already has embeddings for. Average those rows. The new token "भारत" starts out as the average of the six byte tokens the old tokenizer spelled it with, which is a coarse but real representation. This is the simple end of a line of work (WECHSEL, FOCUS) that builds the new rows as weighted combinations of old ones; FOCUS reports its version reaching a masked-language-model loss of {{SRC_FOCUS_MLM_LOSS_GERMAN_FOCUS}} where random initialisation sat at {{SRC_FOCUS_MLM_LOSS_GERMAN_RANDOM}}, with much smaller gaps on downstream tasks.</li>
+            </ul>
+            <p>
+                There's a trap in the third one worth a sentence. Byte-level BPE merges happily cross UTF-8
+                character boundaries, so some of the new tokens are the last byte of one character plus the
+                first two of the next, and decoding one of those to text gives a replacement character. The
+                averaging has to be done on the byte-level strings directly, not on decoded text; the script
+                does, and logs how many of the new tokens average more than one old row.
+            </p>
+            <p>
+                Whichever way the rows are filled, the model is worse at Hindi the moment the tokenizer
+                changes, because it is now being asked to predict tokens it has never predicted. With the
+                mean initialisation the held-out Hindi score goes from {{BPC_STOCK_HI}} bits per character
+                under the stock tokenizer to {{RUN_ABL_16K_MEAN_BPC0_HI}} under the extended one before any
+                training, and English is untouched at {{RUN_ABL_16K_MEAN_BPC0_EN}} because no English token
+                changed. The chart is the first 400 steps of continued pretraining from each of the three
+                starting points, with everything else identical.
+            </p>
+
+            <figure class="content-figure">
+                <img src="./resources/blog-4/init.svg" alt="Three curves of held-out Hindi bits per character against Hindi characters trained on, over 400 steps, for random initialisation, the transformers default and the mean of old sub-token embeddings." loading="lazy" decoding="async">
+                <figcaption>Held-out Hindi bits per character during the first 400 steps ({{RUN_ABL_16K_MEAN_TOKENS_M}}M tokens) from three initialisations of the 16,000 new embedding rows. Same data order, same learning rate, same everything else.</figcaption>
+            </figure>
+
+            <p>
+                The starting points are far apart: {{RUN_ABL_16K_MEAN_BPC0_HI}} bits per character from the
+                mean initialisation, {{RUN_ABL_16K_HF_BPC0_HI}} from the library default and
+                {{RUN_ABL_16K_RANDOM_BPC0_HI}} from random noise, all on a model that scored
+                {{BPC_STOCK_HI}} an hour earlier with its old tokenizer. Four hundred steps later the mean
+                start is still ahead and the other two have swapped places: {{RUN_ABL_16K_MEAN_BPC_HI}}
+                against {{RUN_ABL_16K_RANDOM_BPC_HI}} for random and {{RUN_ABL_16K_HF_BPC_HI}} for the
+                default. The random rows also cost some
+                English at the start ({{RUN_ABL_16K_RANDOM_BPC0_EN}} against {{RUN_ABL_16K_MEAN_BPC0_EN}}),
+                because with tied weights every new row is also a candidate in the output softmax, and
+                16,000 rows of noise steal probability from every English prediction until they're trained
+                down. The library default was the surprise. Rows drawn to look statistically like the old
+                ones start out better than noise and end up worse than it, and I don't have a clean
+                explanation; my guess is that rows that resemble real tokens compete harder in the output
+                layer than rows that resemble nothing, and take longer to be pushed out of the way. Whatever
+                the reason, the cheap thing (average what the token used to be) won by a margin that
+                {{RUN_ABL_16K_MEAN_TOKENS_M}}M tokens didn't close, which is FOCUS's result in miniature:
+                the gap in loss is large and persistent, and a good start is worth a lot of training.
+            </p>

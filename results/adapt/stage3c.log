@@ -1,0 +1,17 @@
+== wikipedia bpb Tue Sep 15 15:08:10 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+SmolLM2-135M                 wiki bpb 0.936 (bpc 2.345, 638386 tok)  20s
+SmolLM2-360M                 wiki bpb 0.828 (bpc 2.074, 638386 tok)  30s
+SmolLM2-1.7B                 wiki bpb 0.691 (bpc 1.731, 638386 tok)  95s
+Qwen2.5-0.5B                 wiki bpb 0.772 (bpc 1.934, 540209 tok)  33s
+Qwen2.5-1.5B                 wiki bpb 0.643 (bpc 1.612, 540209 tok)  79s
+Qwen3-0.6B                   wiki bpb 0.778 (bpc 1.951, 540209 tok)  48s
+Qwen3-1.7B                   wiki bpb 0.682 (bpc 1.710, 540209 tok)  92s
+sarvam-1                     wiki bpb 0.439 (bpc 1.101, 183551 tok)  46s
+  return self._apply(lambda t: t.cuda(device))
+run1200                      wiki bpb 0.690 (bpc 1.730, 171128 tok)  18s
+  return self._apply(lambda t: t.cuda(device))
+cpt-main                     wiki bpb 0.636 (bpc 1.594, 171128 tok)  14s
+  return self._apply(lambda t: t.cuda(device))
+grpo                         wiki bpb 0.749 (bpc 1.877, 171128 tok)  14s
+== STAGE3C-DONE Tue Sep 15 15:16:53 IST 2026

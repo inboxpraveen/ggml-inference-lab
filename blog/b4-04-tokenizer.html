@@ -1,0 +1,99 @@
+            <h2>Step 1, vocabulary extension: the tokenizer has never heard of a matra</h2>
+            <p>
+                Here is one Hindi sentence, "the capital of India is New Delhi", through the stock tokenizer
+                and then through the extended one. Each box is one token; a shaded block is a token that is a
+                fragment of a UTF-8 character and can't be displayed on its own.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Tokenizer</th>
+                            <th>Tokens</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Stock SmolLM2, Hindi</td><td>{{TOKEX_STOCK_HI_HTML}}</td><td>{{TOKEX_STOCK_HI_N}}</td></tr>
+                        <tr><td>Extended, Hindi</td><td>{{TOKEX_EXT_HI_HTML}}</td><td>{{TOKEX_EXT_HI_N}}</td></tr>
+                        <tr><td>Stock SmolLM2, English</td><td>{{TOKEX_STOCK_EN_HTML}}</td><td>{{TOKEX_STOCK_EN_N}}</td></tr>
+                        <tr><td>Extended, English</td><td>{{TOKEX_EXT_EN_HTML}}</td><td>{{TOKEX_EXT_EN_N}}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                {{TOKEX_STOCK_HI_N}} tokens for seven words, most of them single bytes. The stock vocabulary
+                has {{DEV_TOKENS_STOCK}} entries that contain any Devanagari at all, out of
+                {{VOCAB_STOCK}}, and on the held-out Hindi text it uses {{VOCAB_USED_STOCK_HI}} distinct
+                tokens, nearly all of them byte fragments and punctuation. That's the cheap part of the
+                diagnosis. The expensive part took me an afternoon, and it's the reason a naive vocabulary
+                extension gets you almost nothing.
+            </p>
+            <p>
+                SmolLM2's tokenizer is a byte-level BPE in the GPT-2 family. Before any merges are applied,
+                the text is cut into pieces by a regular expression, and BPE can only merge within a piece.
+                The pattern is the GPT-2 one, and the part of it that catches words is <code>\p{L}+</code>: a
+                run of letters. In Unicode, a Devanagari consonant is a letter, but the vowel signs attached
+                to it, the matras, are combining marks, category M, not L. So the pre-tokenizer splits every
+                Hindi word at every vowel sign. In the sentence above, "राजधानी" (capital) becomes {{TOKEX_STOCK_PRETOK_PIECES_RAJDHANI}} pieces
+                before BPE even starts, and no amount of training could ever produce a token for the whole
+                word, because the word never reaches the merge step in one piece. The same pattern, or its
+                close relatives, sits under GPT-4's tokenizer, Llama 3's and Qwen's, which is part of why the
+                chart in the first section looks the way it does; the SentencePiece tokenizers behind Gemma
+                and Sarvam don't pre-split on a regex at all.
+            </p>
+            <p>
+                The fix is one character class. I widened <code>\p{L}+</code> to
+                <code>\p{L}[\p{L}\p{M}]*</code>, a letter followed by any run of letters or marks, and moved
+                the pattern from the built-in ByteLevel pre-tokenizer into an explicit Split step so the
+                library would use it. On English text the two patterns behave identically, because English
+                text contains almost no combining marks; the script checks this on every wikitext test article
+                and on a thousand FineWeb-Edu documents, and out of {{EN_DIFF_TOTAL}} English tokens,
+                {{EN_DIFF_TOKENS}} ({{EN_DIFF_PCT}}%) come out differently, every one of them next to a
+                non-Latin character. Then the rest of the recipe is what Chinese-LLaMA did in 2023, plus the
+                details that cost me the afternoon:
+            </p>
+            <ul>
+                <li><strong>Train a Hindi BPE on Hindi text</strong> with the widened pre-tokenizer, 150M characters, then keep only the merges whose result contains a non-ASCII byte. A Hindi corpus also teaches merges like "th" and "in" from the English words inside it, and those would change English tokenization; the model already has them. That drops {{SKIPPED_ASCII_16K}} of the learned merges and keeps {{MERGES_KEPT_16K}}, producing {{NEW_TOKENS_16K}} new vocabulary entries.</li>
+                <li><strong>Remove the duplicates; the order turns out not to matter.</strong> BPE applies merges in priority order, and a merge list is a ranking, so I assumed the Hindi merges had to go in front of the stock ones. Measured, it makes no difference: Hindi merges first or last, the result is {{TOKVAR_FINAL}} tokens per word either way, because the two lists act on almost disjoint byte pairs. What does matter is the {{DUPES_16K}} pairs that exist in both lists. When the library builds its lookup table the later copy wins, which silently demotes those pairs to the lowest priority and reorders the Hindi merge path in a way that produces tokens for half a character: with the duplicates left in, the same vocabulary gives {{TOKVAR_DUPES}} tokens per word and only {{TOKVAR_DUPES_USED}} of the 16,000 new tokens ever appear on the test set, against {{TOKVAR_FINAL_USED}} when the stock copies are dropped.</li>
+                <li><strong>Watch the loader.</strong> transformers' GPT-2 tokenizer class rebuilds the byte-level pre-tokenizer from its own settings when it loads a directory, throwing away the widened pattern, and the narrow pattern alone takes the same vocabulary from {{TOKVAR_FINAL}} to {{TOKVAR_NARROW}} tokens per word, with {{TOKVAR_NARROW_USED}} of the new tokens reachable. Setting the class to the generic fast tokenizer makes it load the file as written. The script asserts the loaded pre-tokenizer keeps a test word whole, and my first attempt, which had both this and the duplicates wrong, reached 4.0 tokens per word and looked like a modest success until I looked at the pieces.</li>
+            </ul>
+            <p>
+                With those in place the extended tokenizer round-trips every held-out Hindi document exactly,
+                takes {{TPW_16K_HI}} tokens per Hindi word instead of {{TPW_STOCK_HI}}, a factor of
+                {{TPW_GAIN_16K}}, and is byte-for-byte the same tokenizer on English. I built three sizes to
+                see how much vocabulary the language needs.
+            </p>
+
+            <div class="table-container">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>Hindi tokens added</th>
+                            <th>Vocabulary</th>
+                            <th>Hindi tokens per word</th>
+                            <th>Hindi characters per token</th>
+                            <th>Distinct tokens used on held-out Hindi</th>
+                            <th>New embedding parameters</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>0 (stock)</td><td>{{VOCAB_STOCK}}</td><td>{{TPW_STOCK_HI}}</td><td>{{CPT_STOCK_HI}}</td><td>{{VOCAB_USED_STOCK_HI}}</td><td>0</td></tr>
+                        <tr><td>{{NEW_TOKENS_8K}}</td><td>{{VOCAB_8K}}</td><td>{{TPW_8K_HI}}</td><td>{{CPT_8K_HI}}</td><td>{{VOCAB_USED_8K_HI}}</td><td>{{NEW_PARAMS_8K_M}}M</td></tr>
+                        <tr><td>{{NEW_TOKENS_16K}}</td><td>{{VOCAB_16K}}</td><td>{{TPW_16K_HI}}</td><td>{{CPT_16K_HI}}</td><td>{{VOCAB_USED_16K_HI}}</td><td>{{NEW_PARAMS_16K_M}}M</td></tr>
+                        <tr><td>{{NEW_TOKENS_32K}}</td><td>{{VOCAB_32K}}</td><td>{{TPW_32K_HI}}</td><td>{{CPT_32K_HI}}</td><td>{{VOCAB_USED_32K_HI}}</td><td>{{NEW_PARAMS_32K_M}}M</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                The first eight thousand tokens do almost all the work; the next eight thousand buy seven
+                percent and the thirteen thousand after that another five. I went with 16,000 for the rest of the post, which puts the
+                Hindi fertility slightly better than Gemma 3's {{TPW_GEMMA_HI}} and Sarvam-1's
+                {{TPW_SARVAM_HI}} on this text, at the cost of {{NEW_PARAMS_16K_M}}M new parameters, about
+                seven percent of the model. Whether those rows are worth it against 29,000 is a question the
+                continued pretraining section answers with a chart rather than an opinion, since new
+                embedding rows are only useful once they've been trained.
+            </p>

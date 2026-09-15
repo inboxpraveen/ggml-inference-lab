@@ -1,0 +1,49 @@
+== grpo with the v2 language reward Tue Sep 15 16:11:21 IST 2026
+  eval step 0: sentiment acc 0.930 format 1.000 | language reward 0.585 v2 0.417 devanagari 0.931 words 63  (0.6 min)
+step 1/200 reward 0.949 sent 1.0 fmt 1.0 open 0.8988588231760358 len 33 kl 0.0010 gn 2.20 0.7 min
+step 11/200 reward 0.970 sent 0.9666666666666667 fmt 1.0 open 0.9786466011995816 len 18 kl 0.0016 gn 1.78 2.1 min
+step 21/200 reward 0.882 sent 0.7 fmt 1.0 open 0.9424404111395633 len 69 kl 0.0017 gn 1.71 4.2 min
+step 31/200 reward 0.917 sent 1.0 fmt 1.0 open 0.8893006508519602 len 69 kl 0.0018 gn 1.78 6.4 min
+step 41/200 reward 0.932 sent 0.9583333333333334 fmt 0.9583333333333334 open 0.8535807766983344 len 14 kl 0.0028 gn 2.83 8.8 min
+  eval step 50: sentiment acc 0.940 format 1.000 | language reward 0.579 v2 0.403 devanagari 0.941 words 69  (11.3 min)
+step 51/200 reward 0.955 sent 0.95 fmt 1.0 open 0.9608137356123077 len 26 kl 0.0066 gn 2.38 11.8 min
+step 61/200 reward 0.992 sent 1.0 fmt 1.0 open 0.9695626110822769 len 28 kl 0.0038 gn 2.39 14.1 min
+step 71/200 reward 0.889 sent 0.8666666666666667 fmt 1.0 open 0.9542455727203317 len 21 kl 0.0116 gn 3.94 16.4 min
+step 81/200 reward 0.993 sent 1.0 fmt 1.0 open 0.970744195102875 len 25 kl 0.0088 gn 2.70 18.1 min
+step 91/200 reward 0.645 sent 0.35000000000000003 fmt 1.0 open 0.9403229316627055 len 35 kl 0.0129 gn 2.89 20.4 min
+  eval step 100: sentiment acc 0.890 format 1.000 | language reward 0.597 v2 0.382 devanagari 0.953 words 74  (22.6 min)
+step 101/200 reward 0.800 sent 0.8 fmt 1.0 open None len 7 kl 0.0023 gn 0.00 22.6 min
+step 111/200 reward 1.000 sent 1.0 fmt 1.0 open None len 7 kl 0.0008 gn 0.00 24.9 min
+step 121/200 reward 0.789 sent 0.7333333333333334 fmt 1.0 open 0.956306300484657 len 11 kl 0.0249 gn 2.99 27.2 min
+step 131/200 reward 0.800 sent 0.8 fmt 1.0 open None len 7 kl 0.0015 gn 0.00 29.8 min
+step 141/200 reward 0.969 sent 0.96875 fmt 0.96875 open None len 7 kl 0.0073 gn 1.66 32.1 min
+  eval step 150: sentiment acc 0.935 format 1.000 | language reward 0.562 v2 0.368 devanagari 0.965 words 78  (34.7 min)
+step 151/200 reward 0.993 sent 1.0 fmt 1.0 open 0.9703681561011687 len 26 kl 0.0326 gn 2.18 35.1 min
+step 161/200 reward 0.991 sent 1.0 fmt 1.0 open 0.9656404629826134 len 24 kl 0.0170 gn 2.01 37.5 min
+step 171/200 reward 0.985 sent 1.0 fmt 1.0 open 0.9694747196755156 len 35 kl 0.0302 gn 2.09 39.9 min
+step 181/200 reward 0.988 sent 1.0 fmt 1.0 open 0.9760584972123795 len 48 kl 0.0331 gn 1.97 42.3 min
+step 191/200 reward 0.989 sent 1.0 fmt 1.0 open 0.9567714996982487 len 27 kl 0.0509 gn 2.59 44.8 min
+  eval step 200: sentiment acc 0.935 format 1.000 | language reward 0.575 v2 0.345 devanagari 0.975 words 81  (47.4 min)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  1.62it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  1.62it/s]
+saved C:\PK\Github-Projects\ggml-inference-lab\models\adapt\grpo-v2
+== task eval, full test set, both rewards Tue Sep 15 16:58:58 IST 2026
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2                         144M  sentiment acc 0.931 format 1.000 (acc|fmt 0.931)  language reward 0.562 devanagari 0.975 words 82 v2 0.332 looping 0.64 | sampled: reward 0.917 v2 0.864 looping 0.22  80s
+  return self._apply(lambda t: t.cuda(device))
+grpo                            144M  sentiment acc 0.920 format 1.000 (acc|fmt 0.920)  language reward 0.478 devanagari 0.994 words 101 v2 0.243 looping 0.76 | sampled: reward 0.877 v2 0.802 looping 0.45  76s
+  return self._apply(lambda t: t.cuda(device))
+sft-cold                        144M  sentiment acc 0.925 format 1.000 (acc|fmt 0.925)  language reward 0.585 devanagari 0.934 words 65 v2 0.391 looping 0.54 | sampled: reward 0.884 v2 0.826 looping 0.19  83s
+  return self._apply(lambda t: t.cuda(device))
+SmolLM2-135M-Instruct           135M  sentiment acc 0.069 format 0.161 (acc|fmt 0.427)  language reward 0.811 devanagari 0.985 words 17 v2 0.606 looping 0.31 | sampled: reward 0.834 v2 0.823 looping 0.00  145s
+SmolLM2-360M-Instruct           362M  sentiment acc 0.043 format 0.064 (acc|fmt 0.684)  language reward 0.794 devanagari 0.877 words 16 v2 0.670 looping 0.13 | sampled: reward 0.443 v2 0.437 looping 0.00  141s
+SmolLM2-1.7B-Instruct          1711M  sentiment acc 0.002 format 0.002 (acc|fmt 1.000)  language reward 0.907 devanagari 0.961 words 28 v2 0.655 looping 0.25 | sampled: reward 0.834 v2 0.827 looping 0.00  154s
+Qwen2.5-0.5B-Instruct           494M  sentiment acc 0.358 format 0.410 (acc|fmt 0.873)  language reward 0.906 devanagari 0.922 words 33 v2 0.777 looping 0.03 | sampled: reward 0.841 v2 0.835 looping 0.00  75s
+Qwen2.5-1.5B-Instruct          1544M  sentiment acc 0.856 format 0.988 (acc|fmt 0.866)  language reward 0.835 devanagari 0.837 words 31 v2 0.804 looping 0.01 | sampled: reward 0.776 v2 0.773 looping 0.00  113s
+Qwen3-1.7B                     1721M  sentiment acc 0.940 format 0.998 (acc|fmt 0.941)  language reward 0.854 devanagari 0.876 words 33 v2 0.697 looping 0.11 | sampled: reward 0.869 v2 0.788 looping 0.05  130s
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2                          144M  hi bpb 0.604 (bpc 1.522, 131368 tok)  en bpb 1.282 (bpc 1.289)  29s
+  return self._apply(lambda t: t.cuda(device))
+grpo-v2 capital 'भारत की राजधानी नई दिल्ली है।'
+grpo-v2 tea 'चाय बनाने के तीन चरण हैं:\n\n1. **प्रक्रिया:** एक बार जब आप चाय का आनंद लेते हैं, तो आप अपने शरीर को चाय के स्वाद और स्वाद'
+grpo-v2 review '{"label": "negative"}'
+== STAGE3F-DONE Tue Sep 15 17:16:40 IST 2026

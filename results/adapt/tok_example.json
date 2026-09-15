@@ -1,0 +1,11 @@
+{
+ "stock_hi_n": 36,
+ "stock_hi_html": "<code>░</code> <code>░</code> <code>ा</code> <code>र</code> <code>त</code> <code>&#9251;क</code> <code>ी</code> <code>░</code> <code>░</code> <code>ा</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>ा</code> <code>न</code> <code>ी</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>ि</code> <code>░</code> <code>░</code> <code>्</code> <code>░</code> <code>░</code> <code>ी</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code> <code>░</code>",
+ "stock_en_n": 8,
+ "stock_en_html": "<code>The</code> <code>&#9251;capital</code> <code>&#9251;of</code> <code>&#9251;India</code> <code>&#9251;is</code> <code>&#9251;New</code> <code>&#9251;Delhi</code> <code>.</code>",
+ "ext_hi_n": 7,
+ "ext_hi_html": "<code>भारत</code> <code>&#9251;की</code> <code>&#9251;राजधानी</code> <code>&#9251;नई</code> <code>&#9251;दिल्ली</code> <code>&#9251;है</code> <code>।</code>",
+ "ext_en_n": 8,
+ "ext_en_html": "<code>The</code> <code>&#9251;capital</code> <code>&#9251;of</code> <code>&#9251;India</code> <code>&#9251;is</code> <code>&#9251;New</code> <code>&#9251;Delhi</code> <code>.</code>",
+ "stock_pretok_pieces_rajdhani": 6
+}
